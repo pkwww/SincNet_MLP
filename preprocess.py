@@ -5,6 +5,8 @@ import pandas as pd
 from tqdm import tqdm
 import datetime
 
+USE_MIDDLE_AS_TARGET = True
+
 seed = 1234
 np.random.seed(seed)
 
@@ -51,9 +53,13 @@ with open('raw_data/train.csv') as f:
 			print('Processing {} of {}...'.format(str(len(down_samples)+1), str(4194)))
 			down_sample = scipy.signal.resample(signals, num_samples)
 			down_samples.append(down_sample)
-			targets.append(times[len(times)//2])
+			if USE_MIDDLE_AS_TARGET:
+				targets.append(times[len(times)//2])
+			else:
+				targets.append(times[-1])
 
 			signals = []
+			times = []
 
 	down_samples = np.array(down_samples)
 	targets = np.array(targets)
