@@ -187,7 +187,7 @@ DNN2_arch = {'input_dim':fc_lay[-1] ,
 					'fc_act': class_act,
 					}
 
-model = FunTimes(CNN_arch, DNN1_arch, DNN2_arch, use_sinc_net=False)
+model = FunTimes(CNN_arch, DNN1_arch, DNN2_arch, use_sinc_net=True)
 
 if cuda:
 	cost = cost.cuda()
