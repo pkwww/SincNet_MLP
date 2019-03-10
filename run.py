@@ -138,12 +138,7 @@ cuda=options.cuda == 'True'
 patience=int(options.patience)
 
 # Folder creation
-try:
-	os.stat(output_folder)
-	print('output_folder {} exists.'.format(output_folder))
-except:
-	os.mkdir(output_folder) 
-	print('mkdir output_folder {}.'.format(output_folder))
+os.makedirs(output_folder, exist_ok=True)
 		
 # setting seed
 torch.manual_seed(seed)
