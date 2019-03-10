@@ -310,7 +310,7 @@ for i, sample in enumerate(tqdm(test_loader)):
 		if len(sample) == 0:
 				continue
 		with torch.no_grad():
-				output = model(sample['signals']).numpy()
+				output = model(sample['signals']).cpu().numpy()
 		for ii, j in enumerate(range(i * batch_size, (i + 1) * batch_size)):
 			submission.time_to_failure[j] = output[ii][0]
 
