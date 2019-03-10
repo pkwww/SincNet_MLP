@@ -296,6 +296,7 @@ for epoch in range(last_epoch + 1, N_epochs):
 
 
 # Test
+load_checkpoint(save_dir, restore_file, model, optimizer)
 submission = pd.read_csv('sample_submission.csv', index_col='seg_id', dtype={"time_to_failure": np.float32})
 
 test_dataset = EarthquakeDataset(test_src_dir, test_tgt_dir)
