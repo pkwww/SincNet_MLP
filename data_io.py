@@ -28,6 +28,8 @@ def read_conf():
  options.train_tgt_dir=Config.get('data', 'train_tgt_dir')
  options.dev_src_dir=Config.get('data', 'dev_src_dir')
  options.dev_tgt_dir=Config.get('data', 'dev_tgt_dir')
+ options.test_src_dir=Config.get('data', 'test_src_dir')
+ options.test_tgt_dir=Config.get('data', 'test_tgt_dir')
  options.output_folder=Config.get('data', 'output_folder')
  options.save_dir=Config.get('data', 'save_dir')
  options.restore_file=Config.get('data', 'restore_file')
