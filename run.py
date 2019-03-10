@@ -271,7 +271,7 @@ for epoch in range(last_epoch + 1, N_epochs):
 			stats['valid_loss'] += loss.item()
 	
 	# Calculate validation perplexity
-	stats['valid_loss'] = stats['valid_loss']
+	stats['valid_loss'] = stats['valid_loss'] / len(dev_loader)
 	valid_perplexity = np.exp(stats['valid_loss'])
 	
 	print(
@@ -302,6 +302,7 @@ test_dataset = EarthquakeDataset(test_src_dir, test_tgt_dir)
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, 
 																						shuffle=False, num_workers=num_workers, drop_last=False)
 
+print('***** Finished training at {} *****'.format(datetime.datetime.now()))
 print ("Evaluate model with Test Set")
 for i, sample in enumerate(tqdm(test_loader)):
 		# print('Processing {} of {} tests'.format(str(i), str(len(test_loader))))
@@ -317,3 +318,4 @@ for i, sample in enumerate(tqdm(test_loader)):
 print(submission.head())
 # Save
 submission.to_csv('SincNet_submission.csv')
+print ("Prediction saved as SincNet_submission.csv")
