@@ -187,7 +187,7 @@ DNN2_arch = {'input_dim':fc_lay[-1] ,
 					'fc_act': class_act,
 					}
 
-model = FunTimes(CNN_arch, DNN1_arch, DNN2_arch, use_sinc_net=True)
+model = FunTimes(CNN_arch, DNN1_arch, DNN2_arch, use_sinc_net=False)
 
 if cuda:
 	cost = cost.cuda()
@@ -296,7 +296,7 @@ for epoch in range(last_epoch + 1, N_epochs):
 
 
 # Test
-load_checkpoint(save_dir, restore_file, model, optimizer)
+load_checkpoint(save_dir, 'checkpoint_best.pt', model, optimizer)
 submission = pd.read_csv('sample_submission.csv', index_col='seg_id', dtype={"time_to_failure": np.float32})
 
 test_dataset = EarthquakeDataset(test_src_dir, test_tgt_dir)
