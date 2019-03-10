@@ -1,6 +1,7 @@
 import scipy.signal
 import numpy as np
 import pickle
+import pandas as pd
 
 seed = 1234
 np.random.seed(seed)
@@ -10,7 +11,28 @@ fs = 4000000
 cw_len = 1
 num_samples = int(fs * cw_len / 1000.0)
 
-with open('train.csv') as f:
+submission = pd.read_csv('sample_submission.csv', index_col='seg_id', dtype={"time_to_failure": np.float32})
+signals = []
+down_samples = []
+targets = []
+for i, seg_id in enumerate(tqdm(submission.index)):
+    seg = pd.read_csv('raw_data/test/' + seg_id + '.csv')
+    signals = seg['acoustic_data'].values
+    down_sample = scipy.signal.resample(signals, num_samples)
+	down_samples.append(down_sample)
+	targets.append(0.0)
+
+with open('prepared_data/test_signals', 'wb') as outf:
+	pickle.dump(down_samples, outf, protocol=pickle.HIGHEST_PROTOCOL)		
+print('test_signals done.')
+
+with open('prepared_data/test_labels', 'wb') as outf:
+	pickle.dump(targets, outf, protocol=pickle.HIGHEST_PROTOCOL)		
+print('test_labels done.')
+
+
+
+with open('raw_data/train.csv') as f:
 	signals = []
 	down_samples = []
 	targets = []
@@ -59,26 +81,3 @@ with open('prepared_data/dev_labels', 'wb') as outf:
 	dev_labels = targets[int(0.9 * len(down_samples)):]
 	pickle.dump(dev_labels, outf, protocol=pickle.HIGHEST_PROTOCOL)		
 print('dev_labels done.')
-
-
-
-
-# for i in range(0, 629145481, 150000 - 7500):
-
-
-# 1.100000091014408e-09 sec
-
-# 150000 * 1.100000091014408e-09 sec = 1.6500001365216121 * e-04 sec = 16.5 ms
-
-
-# For earthquake prediction: split into chunks of 16.5 ms (150000 samples) with 7500 samples overlap
-
-# wc -l train.csv                 ~/Downloads(master✗)@Jimmys-MacBook-Air.local
-# 629145481 train.csv
-
-
-
-# 4194 train
-# 2624 test
-
-# scipy.signal.resample
