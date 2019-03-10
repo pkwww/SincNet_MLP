@@ -210,8 +210,8 @@ best_validate = float('inf')
 train_dataset = EarthquakeDataset(train_src_dir, train_tgt_dir)
 dev_dataset = EarthquakeDataset(dev_src_dir, dev_tgt_dir)
 
+print('***** Started training at {} *****'.format(datetime.datetime.now()))
 for epoch in range(last_epoch + 1, N_epochs):
-	print('***** Started epoch {} at {} *****'.format(epoch, datetime.datetime.now()))
 	train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, 
 																					shuffle=True, num_workers=num_workers, drop_last=True)
 	model.train()
@@ -248,7 +248,6 @@ for epoch in range(last_epoch + 1, N_epochs):
 	print('Epoch {:03d}: {}'.format(epoch, ' | '.join(key + ' {:.4g}'.format(
 						value / len(progress_bar)) for key, value in stats.items())))
 
-	print('***** Finished epoch {} at {} *****'.format(epoch, datetime.datetime.now()))
 	# Validation
 	model.eval()
 
