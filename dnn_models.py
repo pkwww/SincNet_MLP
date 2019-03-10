@@ -463,7 +463,7 @@ class SincNet(nn.Module):
 class ConvNet(nn.Module):
 		
 	def __init__(self,options):
-		super(SincNet,self).__init__()
+		super(ConvNet,self).__init__()
 	
 		self.cnn_N_filt=options['cnn_N_filt']
 		self.cnn_len_filt=options['cnn_len_filt']
