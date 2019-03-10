@@ -558,7 +558,7 @@ class ConvNet(nn.Module):
 			 x = x.view(batch,-1)
 
 			 return x
-	 	 
+		 
 
 class FunTimes(nn.Module):
 
