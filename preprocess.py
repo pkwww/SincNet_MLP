@@ -2,23 +2,24 @@ import scipy.signal
 import numpy as np
 import pickle
 import pandas as pd
+from tqdm import tqdm
+import datetime
 
 seed = 1234
 np.random.seed(seed)
 
-# Each segment is 37.5 ms, downsample to 1 ms (resulting 4000-dim)
-fs = 4000000
-cw_len = 1
-num_samples = int(fs * cw_len / 1000.0)
+# Down sample, each original is 150000
+num_samples = 40000
 
+print('***** Started processing test set at {} *****'.format(datetime.datetime.now()))
 submission = pd.read_csv('sample_submission.csv', index_col='seg_id', dtype={"time_to_failure": np.float32})
 signals = []
 down_samples = []
 targets = []
 for i, seg_id in enumerate(tqdm(submission.index)):
-    seg = pd.read_csv('raw_data/test/' + seg_id + '.csv')
-    signals = seg['acoustic_data'].values
-    down_sample = scipy.signal.resample(signals, num_samples)
+	seg = pd.read_csv('raw_data/test/' + seg_id + '.csv')
+	signals = seg['acoustic_data'].values
+	down_sample = scipy.signal.resample(signals, num_samples)
 	down_samples.append(down_sample)
 	targets.append(0.0)
 
@@ -31,9 +32,10 @@ with open('prepared_data/test_labels', 'wb') as outf:
 print('test_labels done.')
 
 
-
+print('***** Started processing training set at {} *****'.format(datetime.datetime.now()))
 with open('raw_data/train.csv') as f:
 	signals = []
+	times = []
 	down_samples = []
 	targets = []
 	for i, line in enumerate(f):
@@ -43,12 +45,13 @@ with open('raw_data/train.csv') as f:
 		signal = int(signal)
 		time = float(time)
 		signals.append(signal)
+		times.append(time)
 
 		if len(signals) == 150000:
-			print('Processing {} of {}...'.format(str(len(down_samples)), str(4194)))
+			print('Processing {} of {}...'.format(str(len(down_samples)+1), str(4194)))
 			down_sample = scipy.signal.resample(signals, num_samples)
 			down_samples.append(down_sample)
-			targets.append(time)
+			targets.append(times[len(times)//2])
 
 			signals = []
 
@@ -81,3 +84,5 @@ with open('prepared_data/dev_labels', 'wb') as outf:
 	dev_labels = targets[int(0.9 * len(down_samples)):]
 	pickle.dump(dev_labels, outf, protocol=pickle.HIGHEST_PROTOCOL)		
 print('dev_labels done.')
+
+print('***** Pre processing done at {} *****'.format(datetime.datetime.now()))
