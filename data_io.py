@@ -18,6 +18,7 @@ def read_conf():
  
  parser=OptionParser()
  parser.add_option("--cfg") # Mandatory
+ parser.add_option("--use_sinc_net")
  (options,args)=parser.parse_args()
  cfg_file=options.cfg
  Config = ConfigParser.ConfigParser()

@@ -29,6 +29,7 @@ from torch.serialization import default_restore_location
 import datetime
 
 import pandas as pd
+from optparse import OptionParser
 
 def move_to_cuda(sample):
 		if torch.is_tensor(sample):
@@ -79,6 +80,12 @@ clip_norm=4.0
 
 print('Reading config file...')
 
+parser=OptionParser()
+parser.add_option("--use_sinc_net") # Mandatory
+parser.add_option("--cfg")
+(options,args)=parser.parse_args()
+use_sinc_net=options.use_sinc_net == 'True'
+
 # Reading cfg file
 options=read_conf()
 
@@ -95,8 +102,6 @@ restore_file=options.restore_file
 
 #[windowing]
 fs=int(options.fs)
-cw_len=int(options.cw_len)
-cw_shift=int(options.cw_shift)
 
 #[cnn]
 cnn_N_filt=list(map(int, options.cnn_N_filt.split(',')))
@@ -149,8 +154,7 @@ cost = nn.L1Loss()
 
 	
 # Converting context and shift in samples
-wlen=4000
-# wshift=int(fs*cw_shift/1000.00)
+wlen=40000
 
 # Feature extractor CNN
 CNN_arch = {'input_dim': wlen,
