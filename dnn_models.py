@@ -576,7 +576,7 @@ class FunTimes(nn.Module):
 
 class LSTM(nn.Module):
 	def __init__(self,
-				 embed_dim=15,
+				 embed_dim=40000,
 				 hidden_size=128,
 				 num_layers=4,
 				 bidirectional=True,
@@ -631,10 +631,10 @@ class EZ_MLP(nn.Module):
         self.layers = nn.Sequential(
             nn.Linear(256, 10),
             nn.ReLU(),
-            # nn.Linear(10, 10),
-            # nn.ReLU(),
-            # nn.Linear(10, 10),
-            # nn.ReLU(),
+            nn.Linear(10, 10),
+            nn.ReLU(),
+            nn.Linear(10, 10),
+            nn.ReLU(),
             nn.Linear(10, 1),
             nn.Softplus()
         )
