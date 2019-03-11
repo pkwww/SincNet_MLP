@@ -633,6 +633,8 @@ class EZ_MLP(nn.Module):
             nn.ReLU(),
             nn.Linear(10, 10),
             nn.ReLU(),
+            nn.Linear(10, 10),
+            nn.ReLU(),
             nn.Linear(10, 1),
             nn.Softplus()
         )
