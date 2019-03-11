@@ -578,7 +578,7 @@ class LSTM(nn.Module):
 	def __init__(self,
 				 embed_dim=8,
 				 hidden_size=48,
-				 num_layers=4,
+				 num_layers=8,
 				 bidirectional=True,
 				 dropout_in=0.25,
 				 dropout_out=0.25):
