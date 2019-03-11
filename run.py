@@ -19,7 +19,7 @@ from torch.autograd import Variable
 import sys
 from tqdm import tqdm
 import numpy as np
-from dnn_models import FunTimes, LSTM, SincNet as CNN
+from dnn_models import FunTimes, LSTM, FunTimesLSTM, SincNet as CNN
 from dataset import EarthquakeDataset
 from tqdm import tqdm
 
@@ -169,9 +169,10 @@ CNN_arch = {'input_dim': wlen,
 					'cnn_act': cnn_act,
 					'cnn_drop':cnn_drop,          
 					}
-CNN_net = CNN(CNN_arch)
+#CNN_net = CNN(CNN_arch)
+LSTM_net = LSTM()
 
-DNN1_arch = {'input_dim': CNN_net.out_dim,
+DNN1_arch = {'input_dim': LSTM_net.out_dim,
 					'fc_lay': fc_lay,
 					'fc_drop': fc_drop, 
 					'fc_use_batchnorm': fc_use_batchnorm,
@@ -191,7 +192,8 @@ DNN2_arch = {'input_dim':fc_lay[-1] ,
 					'fc_act': class_act,
 					}
 
-model = FunTimes(CNN_arch, DNN1_arch, DNN2_arch, use_sinc_net=use_sinc_net)
+#model = FunTimes(CNN_arch, DNN1_arch, DNN2_arch, use_sinc_net=use_sinc_net)
+model = FunTimesLSTM()
 
 if cuda:
 	cost = cost.cuda()
@@ -233,6 +235,8 @@ for epoch in range(last_epoch + 1, N_epochs):
 					sample = move_to_cuda(sample)
 			if len(sample) == 0:
 					continue
+
+			#print(sample['signals'].size())
 
 			output = model(sample['signals'])
 			loss = cost(output, sample['target'])

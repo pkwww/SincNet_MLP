@@ -325,6 +325,7 @@ class MLP(nn.Module):
 			 
 			 
 	def forward(self, x):
+
 			
 		# Applying Layer/Batch Norm
 		if bool(self.fc_use_laynorm_inp):
@@ -575,9 +576,9 @@ class FunTimes(nn.Module):
 
 class LSTM(nn.Module):
 	def __init__(self,
-				 embed_dim=4000,
-				 hidden_size=64,
-				 num_layers=1,
+				 embed_dim=8,
+				 hidden_size=48,
+				 num_layers=2,
 				 bidirectional=True,
 				 dropout_in=0.25,
 				 dropout_out=0.25):
@@ -588,7 +589,7 @@ class LSTM(nn.Module):
 		self.dropout_out = dropout_out
 		self.bidirectional = bidirectional
 		self.hidden_size = hidden_size
-		self.output_dim = 2 * hidden_size if bidirectional else hidden_size
+		self.out_dim = 2 * hidden_size if bidirectional else hidden_size
 
 		
 		dropout_lstm = dropout_out if num_layers > 1 else 0.
@@ -598,11 +599,11 @@ class LSTM(nn.Module):
 												dropout=dropout_lstm,
 												bidirectional=bidirectional)
 
-	def forward(self, src_tokens, src_lengths):
+	def forward(self, src_embeddings):
 		""" Performs a single forward pass through the instantiated encoder sub-network. """
 		# Embed tokens and apply dropout
-		batch_size, src_time_steps = src_tokens.size()
-		src_embeddings = self.embedding(src_tokens)
+		batch_size, src_time_steps, embed_dim = src_embeddings.size()
+		src_lengths = [src_time_steps] * batch_size
 		_src_embeddings = F.dropout(src_embeddings, p=self.dropout_in, training=self.training)
 
 		# Transpose batch: [batch_size, src_time_steps, num_features] -> [src_time_steps, batch_size, num_features]
@@ -617,6 +618,33 @@ class LSTM(nn.Module):
 		# Unpack LSTM outputs and optionally apply dropout (dropout currently disabled)
 		lstm_output, _ = nn.utils.rnn.pad_packed_sequence(packed_outputs, padding_value=0.)
 		lstm_output = F.dropout(lstm_output, p=self.dropout_out, training=self.training)
-		assert list(lstm_output.size()) == [src_time_steps, batch_size, self.output_dim]  # sanity check
+		assert list(lstm_output.size()) == [src_time_steps, batch_size, self.out_dim]  # sanity check
 		
+		lstm_output = lstm_output.transpose(0, 1)
+
 		return lstm_output
+
+
+class EZ_MLP(nn.Module):
+    def __init__(self):
+        super(EZ_MLP, self).__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(96, 10),
+            nn.ReLU(),
+            nn.Linear(10, 1),
+            nn.Softplus()
+        )
+        
+    def forward(self, x):
+        x = self.layers(x)
+        return x.squeeze(-1)
+
+class FunTimesLSTM(nn.Module):
+
+	def __init__(self):
+		super(FunTimesLSTM, self).__init__()
+		self.LSTM = LSTM()
+		self.EZ_MLP = EZ_MLP()
+		
+	def forward(self, x):
+		return self.EZ_MLP(self.LSTM(x))
