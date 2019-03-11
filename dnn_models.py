@@ -579,7 +579,7 @@ class LSTM(nn.Module):
 				 embed_dim=8,
 				 hidden_size=48,
 				 num_layers=2,
-				 bidirectional=True,
+				 bidirectional=False,
 				 dropout_in=0.25,
 				 dropout_out=0.25):
 
@@ -629,7 +629,7 @@ class EZ_MLP(nn.Module):
     def __init__(self):
         super(EZ_MLP, self).__init__()
         self.layers = nn.Sequential(
-            nn.Linear(96, 10),
+            nn.Linear(48, 10),
             nn.ReLU(),
             nn.Linear(10, 1),
             nn.Softplus()
