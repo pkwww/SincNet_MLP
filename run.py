@@ -291,7 +291,7 @@ for epoch in range(last_epoch + 1, N_epochs):
 	save_checkpoint(options, save_dir, model, optimizer, epoch, valid_perplexity)  # lr_scheduler
 
 	# Check whether to terminate training
-	if valid_perplexity < best_validate:
+	if valid_perplexity <= best_validate:
 			best_validate = valid_perplexity
 			bad_epochs = 0
 	else:
