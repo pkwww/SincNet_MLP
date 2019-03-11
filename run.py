@@ -298,6 +298,7 @@ for epoch in range(last_epoch + 1, N_epochs):
 			bad_epochs += 1
 	if bad_epochs >= patience:
 			print('No validation set improvements observed for {:d} epochs. Early stop!'.format(patience))
+			print('Best perplexity is {}'.format(best_validate))
 			break
 
 
