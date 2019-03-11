@@ -629,9 +629,9 @@ class EZ_MLP(nn.Module):
     def __init__(self):
         super(EZ_MLP, self).__init__()
         self.layers = nn.Sequential(
-            nn.Linear(256, 100),
+            nn.Linear(256, 10),
             nn.ReLU(),
-            nn.Linear(100, 10),
+            nn.Linear(10, 10),
             nn.ReLU(),
             nn.Linear(10, 10),
             nn.ReLU(),
