@@ -19,7 +19,7 @@ from torch.autograd import Variable
 import sys
 from tqdm import tqdm
 import numpy as np
-from dnn_models import FunTimes, SincNet as CNN
+from dnn_models import FunTimes, LSTM, SincNet as CNN
 from dataset import EarthquakeDataset
 from tqdm import tqdm
 
@@ -154,7 +154,7 @@ cost = nn.L1Loss()
 
 	
 # Converting context and shift in samples
-wlen=40000
+wlen=4000
 
 # Feature extractor CNN
 CNN_arch = {'input_dim': wlen,

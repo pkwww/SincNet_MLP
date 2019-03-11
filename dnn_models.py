@@ -580,8 +580,7 @@ class LSTM(nn.Module):
 				 num_layers=1,
 				 bidirectional=True,
 				 dropout_in=0.25,
-				 dropout_out=0.25,
-				 pretrained_embedding=None):
+				 dropout_out=0.25):
 
 		super(LSTM, self).__init__()
 
