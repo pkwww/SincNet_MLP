@@ -641,7 +641,7 @@ class EZ_MLP(nn.Module):
         
     def forward(self, x):
         x = self.layers(x)
-        return x.squeeze(-1)[:, -1]
+        return x.squeeze(-1)
 
 class FunTimesLSTM(nn.Module):
 
