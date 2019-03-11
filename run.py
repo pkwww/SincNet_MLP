@@ -238,7 +238,7 @@ for epoch in range(last_epoch + 1, N_epochs):
 
 			#print(sample['signals'].size())
 
-			output = model(sample['signals'].unsqueeze(-1))
+			output = model(sample['signals'])
 			loss = cost(output, sample['target'])
 
 			optimizer.zero_grad()
@@ -272,7 +272,7 @@ for epoch in range(last_epoch + 1, N_epochs):
 					continue
 			with torch.no_grad():
 					# Compute loss
-					output = model(sample['signals'].unsqueeze(-1))
+					output = model(sample['signals'])
 					loss = cost(output, sample['target'])
 			# Update tracked statistics
 			stats['valid_loss'] += loss.item()
