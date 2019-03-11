@@ -154,7 +154,7 @@ cost = nn.L1Loss()
 
 	
 # Converting context and shift in samples
-wlen=40000
+wlen=150000
 
 # Feature extractor CNN
 CNN_arch = {'input_dim': wlen,
