@@ -631,10 +631,10 @@ class EZ_MLP(nn.Module):
         self.layers = nn.Sequential(
             nn.Linear(256, 10),
             nn.ReLU(),
-            nn.Linear(10, 10),
-            nn.ReLU(),
-            nn.Linear(10, 10),
-            nn.ReLU(),
+            # nn.Linear(10, 10),
+            # nn.ReLU(),
+            # nn.Linear(10, 10),
+            # nn.ReLU(),
             nn.Linear(10, 1),
             nn.Softplus()
         )
