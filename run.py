@@ -323,7 +323,7 @@ for i, sample in enumerate(tqdm(test_loader)):
 		with torch.no_grad():
 				output = model(sample['signals']).cpu().numpy()
 		for ii, j in enumerate(range(i * batch_size, (i + 1) * batch_size)):
-			submission.time_to_failure[j] = output[ii][0]
+			submission.time_to_failure[j] = output[ii][-1]
 
 print(submission.head())
 # Save
