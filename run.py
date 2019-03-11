@@ -238,7 +238,7 @@ for epoch in range(last_epoch + 1, N_epochs):
 
 			#print(sample['signals'].size())
 
-			output = model(sample['signals'])
+			output = model(sample['signals'].unsqueeze(-1))
 			loss = cost(output, sample['target'])
 
 			optimizer.zero_grad()
@@ -259,8 +259,7 @@ for epoch in range(last_epoch + 1, N_epochs):
 	# Validation
 	model.eval()
 
-	dev_loader = torch.utils.data.DataLoader(dev_dataset, batch_size=batch_size, 
-																						shuffle=False, num_workers=num_workers, drop_last=True)
+	dev_loader = torch.utils.data.DataLoader(dev_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, drop_last=True)
 
 	stats = OrderedDict()
 	stats['valid_loss'] = 0
@@ -309,8 +308,7 @@ load_checkpoint(save_dir, 'checkpoint_best.pt', model, optimizer)
 submission = pd.read_csv('sample_submission.csv', index_col='seg_id', dtype={"time_to_failure": np.float32})
 
 test_dataset = EarthquakeDataset(test_src_dir, test_tgt_dir)
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, 
-																						shuffle=False, num_workers=num_workers, drop_last=False)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, drop_last=False)
 
 print('***** Finished training at {} *****'.format(datetime.datetime.now()))
 print ("Evaluate model with Test Set")
