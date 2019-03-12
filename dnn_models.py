@@ -945,7 +945,7 @@ class TransformerEncoder(nn.Module):
         self.relu_dropout = relu_dropout
         self.pos = pos
 
-        padding_idx = None
+        padding_idx = -1
         if self.pos == "learned":
             self.embed_positions = PositionalEmbedding(max_positions, embed_dim, padding_idx,
                                                        left_pad=False)
@@ -973,7 +973,7 @@ class TransformerEncoder(nn.Module):
         # embed tokens plus positions
         batch_size, src_time_steps, embed_dim = src_tokens.size()
         src_lengths = [src_time_steps] * batch_size
-        padding_idx = None
+        padding_idx = -1
         input_to_padding = attention_bias_ignore_padding(src_tokens, padding_idx)
         encoder_self_attention_bias = encoder_attention_bias(input_to_padding)
         encoder_input = src_tokens
