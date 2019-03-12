@@ -629,11 +629,11 @@ class EZ_MLP(nn.Module):
     def __init__(self):
         super(EZ_MLP, self).__init__()
         self.layers = nn.Sequential(
-            nn.Linear(256, 10),
+            nn.Linear(8, 8),
             nn.ReLU(),
             # nn.Linear(10, 10),
             # nn.ReLU(),
-            nn.Linear(10, 1),
+            nn.Linear(8, 1),
             nn.Softplus()
         )
         
@@ -933,9 +933,9 @@ def encoder_attention_bias(bias):
 
 class TransformerEncoder(nn.Module):
     """Transformer encoder."""
-    def __init__(self, embed_dim=256, max_positions=1024, pos="learned",
+    def __init__(self, embed_dim=8, max_positions=1024, pos="learned",
                  num_layers=2, num_heads=8,
-                 filter_size=256, hidden_size=256,
+                 filter_size=8, hidden_size=8,
                  dropout=0.1, attention_dropout=0.1, relu_dropout=0.1):
         super(TransformerEncoder, self).__init__()
         assert pos == "learned" or pos == "timing" or pos == "nopos"
@@ -945,7 +945,7 @@ class TransformerEncoder(nn.Module):
         self.relu_dropout = relu_dropout
         self.pos = pos
 
-        padding_idx = -1
+        padding_idx = 0
         if self.pos == "learned":
             self.embed_positions = PositionalEmbedding(max_positions, embed_dim, padding_idx,
                                                        left_pad=False)
@@ -969,19 +969,18 @@ class TransformerEncoder(nn.Module):
             self.norm2_blocks.append(LayerNormalization(hidden_size))
         self.out_norm = LayerNormalization(hidden_size)
 
-    def forward(self, src_tokens):
+    def forward(self, encoder_input):
         # embed tokens plus positions
-        batch_size, src_time_steps, embed_dim = src_tokens.size()
+        batch_size, src_time_steps, embed_dim = encoder_input.size()
         src_lengths = [src_time_steps] * batch_size
-        padding_idx = -1
+        src_tokens = encoder_input[:, :, 0]
+        padding_idx = 0
         input_to_padding = attention_bias_ignore_padding(src_tokens, padding_idx)
         encoder_self_attention_bias = encoder_attention_bias(input_to_padding)
-        encoder_input = src_tokens
         if self.pos != "nopos":
-            encoder_input += self.embed_positions(src_tokens)
+            encoder_input += self.embed_positions(src_tokens.type(torch.LongTensor))
 
         x = F.dropout(encoder_input, p=self.dropout, training=self.training)
-
         for self_attention, ffn, norm1, norm2 in zip(self.self_attention_blocks,
                                                      self.ffn_blocks,
                                                      self.norm1_blocks,
