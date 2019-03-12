@@ -16,8 +16,8 @@ class EarthquakeDataset(Dataset):
     def __getitem__(self, index):
         return {
             'id': index,
-            'signals': torch.FloatTensor(self.signals[index]),
-            'target': torch.FloatTensor([self.targets[index]]),
+            'signals': torch.cuda.FloatTensor(self.signals[index]),
+            'target': torch.cuda.FloatTensor([self.targets[index]]),
         } 
 
     def __len__(self):
