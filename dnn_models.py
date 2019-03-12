@@ -972,7 +972,7 @@ class TransformerEncoder(nn.Module):
     def forward(self, src_tokens):
         # embed tokens plus positions
         batch_size, src_time_steps, embed_dim = src_tokens.size()
-		src_lengths = [src_time_steps] * batch_size
+        src_lengths = [src_time_steps] * batch_size
         padding_idx = None
         input_to_padding = attention_bias_ignore_padding(src_tokens, padding_idx)
         encoder_self_attention_bias = encoder_attention_bias(input_to_padding)
