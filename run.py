@@ -238,8 +238,8 @@ for epoch in range(last_epoch + 1, N_epochs):
 			if len(sample) == 0:
 					continue
 
-			#print(sample['signals'].size())
-			signals = sample['signals'].unsqueeze(-1)
+			signals = sample['signals']
+			#signals = sample['signals'].unsqueeze(-1)
 			output = model(signals)
 			loss = cost(output, sample['target'])
 
@@ -274,7 +274,8 @@ for epoch in range(last_epoch + 1, N_epochs):
 					continue
 			with torch.no_grad():
 					# Compute loss
-					signals = sample['signals'].unsqueeze(-1)
+					#signals = sample['signals'].unsqueeze(-1)
+					signals = sample['signals']
 					output = model(signals)
 					loss = cost(output, sample['target'])
 			# Update tracked statistics
@@ -322,7 +323,8 @@ for i, sample in enumerate(tqdm(test_loader)):
 		if len(sample) == 0:
 				continue
 		with torch.no_grad():
-				signals = sample['signals'].unsqueeze(-1)
+				#signals = sample['signals'].unsqueeze(-1)
+				signals = sample['signals']
 				output = model(signals).cpu().numpy()
 		for ii, j in enumerate(range(i * batch_size, (i + 1) * batch_size)):
 			submission.time_to_failure[j] = output[ii][-1]
