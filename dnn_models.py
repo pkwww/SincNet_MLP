@@ -629,11 +629,11 @@ class EZ_MLP(nn.Module):
     def __init__(self):
         super(EZ_MLP, self).__init__()
         self.layers = nn.Sequential(
-            nn.Linear(8, 8),
+            nn.Linear(256, 10),
             nn.ReLU(),
             # nn.Linear(10, 10),
             # nn.ReLU(),
-            nn.Linear(8, 1),
+            nn.Linear(10, 1),
             nn.Softplus()
         )
         
@@ -647,14 +647,25 @@ class FunTimesLSTM(nn.Module):
 		super(FunTimesLSTM, self).__init__()
 		self.LSTM = TransformerEncoder()
 		self.EZ_MLP = EZ_MLP()
+
+		self.mlp1 = FeedForwardNetwork2(8, 256)
 		
 	def forward(self, x):
+		#hidden_size = x.size()[-1]
+		x = self.mlp1(x)
 		return self.EZ_MLP(self.LSTM(x))
 
 
 
 
-
+class FeedForwardNetwork2(nn.Module):
+    def __init__(self, hidden_size, filter_size):
+        super(FeedForwardNetwork2, self).__init__()
+        self.fc1 = Linear(hidden_size, filter_size, bias=False)
+        
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        return x
 
 
 
@@ -933,9 +944,9 @@ def encoder_attention_bias(bias):
 
 class TransformerEncoder(nn.Module):
     """Transformer encoder."""
-    def __init__(self, embed_dim=8, max_positions=1024, pos="learned",
+    def __init__(self, embed_dim=256, max_positions=1024, pos="learned",
                  num_layers=2, num_heads=8,
-                 filter_size=8, hidden_size=8,
+                 filter_size=256, hidden_size=256,
                  dropout=0.1, attention_dropout=0.1, relu_dropout=0.1):
         super(TransformerEncoder, self).__init__()
         assert pos == "learned" or pos == "timing" or pos == "nopos"
@@ -978,7 +989,8 @@ class TransformerEncoder(nn.Module):
         input_to_padding = attention_bias_ignore_padding(src_tokens, padding_idx)
         encoder_self_attention_bias = encoder_attention_bias(input_to_padding)
         if self.pos != "nopos":
-            encoder_input += self.embed_positions(src_tokens.type(torch.cuda.LongTensor))
+            #encoder_input += self.embed_positions(src_tokens.type(torch.cuda.LongTensor))
+            encoder_input += self.embed_positions(src_tokens.type(torch.LongTensor))
 
         x = F.dropout(encoder_input, p=self.dropout, training=self.training)
         for self_attention, ffn, norm1, norm2 in zip(self.self_attention_blocks,
