@@ -978,7 +978,7 @@ class TransformerEncoder(nn.Module):
         input_to_padding = attention_bias_ignore_padding(src_tokens, padding_idx)
         encoder_self_attention_bias = encoder_attention_bias(input_to_padding)
         if self.pos != "nopos":
-            encoder_input += self.embed_positions(src_tokens.type(torch.LongTensor))
+            encoder_input += self.embed_positions(src_tokens.type(torch.cuda.LongTensor))
 
         x = F.dropout(encoder_input, p=self.dropout, training=self.training)
         for self_attention, ffn, norm1, norm2 in zip(self.self_attention_blocks,
