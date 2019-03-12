@@ -648,7 +648,7 @@ class FunTimesLSTM(nn.Module):
 		self.LSTM = TransformerEncoder()
 		self.EZ_MLP = EZ_MLP()
 
-		self.mlp1 = FeedForwardNetwork2(8, 256)
+		self.mlp1 = FeedForwardNetwork2(1, 8)
 		
 	def forward(self, x):
 		#hidden_size = x.size()[-1]
@@ -719,7 +719,7 @@ class SinusoidalPositionalEmbedding(nn.Module):
     is added on the left side (left_pad=True) or right side (left_pad=False).
     """
 
-    def __init__(self, embedding_dim, padding_idx, left_pad, init_size=1024):
+    def __init__(self, embedding_dim, padding_idx, left_pad, init_size=4000):
         super().__init__()
         self.embedding_dim = embedding_dim
         self.padding_idx = padding_idx
@@ -944,9 +944,9 @@ def encoder_attention_bias(bias):
 
 class TransformerEncoder(nn.Module):
     """Transformer encoder."""
-    def __init__(self, embed_dim=256, max_positions=1024, pos="learned",
-                 num_layers=4, num_heads=8,
-                 filter_size=256, hidden_size=256,
+    def __init__(self, embed_dim=8, max_positions=4000, pos="learned",
+                 num_layers=2, num_heads=8,
+                 filter_size=8, hidden_size=8,
                  dropout=0.1, attention_dropout=0.1, relu_dropout=0.1):
         super(TransformerEncoder, self).__init__()
         assert pos == "learned" or pos == "timing" or pos == "nopos"
@@ -1009,4 +1009,4 @@ class TransformerEncoder(nn.Module):
         if self.pos == "learned":
             return self.embed_positions.max_positions()
         else:
-            return 1024
+            return 4000
