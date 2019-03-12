@@ -945,7 +945,7 @@ def encoder_attention_bias(bias):
 class TransformerEncoder(nn.Module):
     """Transformer encoder."""
     def __init__(self, embed_dim=256, max_positions=1024, pos="learned",
-                 num_layers=2, num_heads=8,
+                 num_layers=4, num_heads=8,
                  filter_size=256, hidden_size=256,
                  dropout=0.1, attention_dropout=0.1, relu_dropout=0.1):
         super(TransformerEncoder, self).__init__()
