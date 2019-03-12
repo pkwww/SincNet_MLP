@@ -202,11 +202,12 @@ if cuda:
 print('FunTimes: {:d} parameters'.format(sum(p.numel() for p in model.parameters())))
 
 # Instantiate optimizer and learning rate scheduler
-# optimizer = optim.Adam(model.parameters(), lr)
-optimizer = optim.RMSprop(model.parameters(), lr=lr,alpha=0.95, eps=1e-8) 
+optimizer = optim.Adam(model.parameters(), lr)
+# optimizer = optim.RMSprop(model.parameters(), lr=lr,alpha=0.95, eps=1e-8) 
 
 # Load last checkpoint if one exists
-state_dict = load_checkpoint(save_dir, restore_file, model, optimizer)
+state_dict = None
+#state_dict = load_checkpoint(save_dir, restore_file, model, optimizer)
 last_epoch = state_dict['last_epoch'] if state_dict is not None else -1
 	
 # Track validation performance for early stopping
