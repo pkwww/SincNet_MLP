@@ -203,7 +203,7 @@ if cuda:
 print('FunTimes: {:d} parameters'.format(sum(p.numel() for p in model.parameters())))
 
 # Instantiate optimizer and learning rate scheduler
-optimizer = optim.AdamW(model.parameters(), lr, weight_decay=0.1)
+optimizer = AdamW(model.parameters(), lr, weight_decay=0.1)
 # optimizer = optim.RMSprop(model.parameters(), lr=lr,alpha=0.95, eps=1e-8) 
 
 # Load last checkpoint if one exists
