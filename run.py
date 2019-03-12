@@ -202,7 +202,7 @@ if cuda:
 print('FunTimes: {:d} parameters'.format(sum(p.numel() for p in model.parameters())))
 
 # Instantiate optimizer and learning rate scheduler
-optimizer = optim.Adam(model.parameters(), lr)
+optimizer = optim.AdamW(model.parameters(), lr, weight_decay=0.1)
 # optimizer = optim.RMSprop(model.parameters(), lr=lr,alpha=0.95, eps=1e-8) 
 
 # Load last checkpoint if one exists
@@ -238,8 +238,8 @@ for epoch in range(last_epoch + 1, N_epochs):
 					continue
 
 			#print(sample['signals'].size())
-
-			output = model(sample['signals'])
+			signals = sample['signals'].unsqueeze(-1)
+			output = model(signals)
 			loss = cost(output, sample['target'])
 
 			optimizer.zero_grad()
@@ -273,7 +273,8 @@ for epoch in range(last_epoch + 1, N_epochs):
 					continue
 			with torch.no_grad():
 					# Compute loss
-					output = model(sample['signals'])
+					signals = sample['signals'].unsqueeze(-1)
+					output = model(signals)
 					loss = cost(output, sample['target'])
 			# Update tracked statistics
 			stats['valid_loss'] += loss.item()
@@ -320,7 +321,8 @@ for i, sample in enumerate(tqdm(test_loader)):
 		if len(sample) == 0:
 				continue
 		with torch.no_grad():
-				output = model(sample['signals']).cpu().numpy()
+				signals = sample['signals'].unsqueeze(-1)
+				output = model(signals).cpu().numpy()
 		for ii, j in enumerate(range(i * batch_size, (i + 1) * batch_size)):
 			submission.time_to_failure[j] = output[ii][-1]
 
