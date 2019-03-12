@@ -155,7 +155,7 @@ cost = nn.L1Loss()
 
 	
 # Converting context and shift in samples
-wlen=40000
+wlen=8
 
 # Feature extractor CNN
 CNN_arch = {'input_dim': wlen,
@@ -193,8 +193,8 @@ DNN2_arch = {'input_dim':fc_lay[-1] ,
 					'fc_act': class_act,
 					}
 
-#model = FunTimes(CNN_arch, DNN1_arch, DNN2_arch, use_sinc_net=use_sinc_net)
-model = FunTimesLSTM()
+model = FunTimes(CNN_arch, DNN1_arch, DNN2_arch, use_sinc_net=use_sinc_net)
+# model = FunTimesLSTM()
 
 if cuda:
 	cost = cost.cuda()
