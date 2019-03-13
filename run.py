@@ -8,7 +8,7 @@
 # This code performs an earthquake experiment with SincNet.
  
 # How to run it:
-# python run.py --cfg=cfg/SincNet_TIMIT.cfg
+# python run.py --cfg=cfg/LSTM_Earthquake.cfg --model=Transformer_features
 import os
 import torch
 import torch.nn as nn
@@ -19,7 +19,8 @@ from torch.autograd import Variable
 import sys
 from tqdm import tqdm
 import numpy as np
-from dnn_models import FunTimes, LSTM, FunTimesLSTM, SincNet as CNN
+from dnn_models import FunTimesTransformer, FunTimesLSTM, FunTimesCNN, SincNet, ConvNet, EZConv
+
 from dataset import EarthquakeDataset
 from tqdm import tqdm
 
@@ -82,10 +83,10 @@ clip_norm=4.0
 print('Reading config file...')
 
 parser=OptionParser()
-parser.add_option("--use_sinc_net") # Mandatory
+parser.add_option("--model") 
 parser.add_option("--cfg")
 (options,args)=parser.parse_args()
-use_sinc_net=options.use_sinc_net == 'True'
+architecture = options.model
 
 # Reading cfg file
 options=read_conf()
@@ -105,6 +106,7 @@ restore_file=options.restore_file
 fs=int(options.fs)
 
 #[cnn]
+wlen=int(options.wlen)
 cnn_N_filt=list(map(int, options.cnn_N_filt.split(',')))
 cnn_len_filt=list(map(int, options.cnn_len_filt.split(',')))
 cnn_max_pool_len=list(map(int, options.cnn_max_pool_len.split(',')))
@@ -115,30 +117,50 @@ cnn_use_batchnorm=list(map(str_to_bool, options.cnn_use_batchnorm.split(',')))
 cnn_act=list(map(str, options.cnn_act.split(',')))
 cnn_drop=list(map(float, options.cnn_drop.split(',')))
 
-#[dnn]
-fc_lay=list(map(int, options.fc_lay.split(',')))
-fc_drop=list(map(float, options.fc_drop.split(',')))
-fc_use_laynorm_inp=str_to_bool(options.fc_use_laynorm_inp)
-fc_use_batchnorm_inp=str_to_bool(options.fc_use_batchnorm_inp)
-fc_use_batchnorm=list(map(str_to_bool, options.fc_use_batchnorm.split(',')))
-fc_use_laynorm=list(map(str_to_bool, options.fc_use_laynorm.split(',')))
-fc_act=list(map(str, options.fc_act.split(',')))
+#[transformer]
+tr_embed_dim=int(options.tr_embed_dim)
+tr_max_positions=int(options.tr_max_positions)
+tr_pos=options.tr_pos
+tr_num_layers=int(options.tr_num_layers)
+tr_num_heads=int(options.tr_num_heads)
+tr_filter_size=int(options.tr_filter_size)
+tr_hidden_size=int(options.tr_hidden_size)
+tr_dropout=float(options.tr_dropout)
+tr_attention_dropout=float(options.tr_attention_dropout)
+tr_relu_dropout=float(options.tr_relu_dropout)
 
-#[class]
-class_lay=list(map(int, options.class_lay.split(',')))
-class_drop=list(map(float, options.class_drop.split(',')))
-class_use_laynorm_inp=str_to_bool(options.class_use_laynorm_inp)
-class_use_batchnorm_inp=str_to_bool(options.class_use_batchnorm_inp)
-class_use_batchnorm=list(map(str_to_bool, options.class_use_batchnorm.split(',')))
-class_use_laynorm=list(map(str_to_bool, options.class_use_laynorm.split(',')))
-class_act=list(map(str, options.class_act.split(',')))
+#[lstm]
+lstm_embed_dim=int(options.lstm_embed_dim)
+lstm_hidden_size=int(options.lstm_hidden_size)
+lstm_num_layers=int(options.lstm_num_layers)
+lstm_bidirectional=options.lstm_bidirectional=='True'
+lstm_dropout_in=float(options.lstm_dropout_in)
+lstm_dropout_out=float(options.lstm_dropout_out)
+
+#[dnn_before]
+fc1_lay_use=options.fc1_lay_use=='True'
+fc1_lay=list(map(int, options.fc1_lay.split(',')))
+fc1_drop=list(map(float, options.fc1_drop.split(',')))
+fc1_use_laynorm_inp=str_to_bool(options.fc1_use_laynorm_inp)
+fc1_use_batchnorm_inp=str_to_bool(options.fc1_use_batchnorm_inp)
+fc1_use_batchnorm=list(map(str_to_bool, options.fc1_use_batchnorm.split(',')))
+fc1_use_laynorm=list(map(str_to_bool, options.fc1_use_laynorm.split(',')))
+fc1_act=list(map(str, options.fc1_act.split(',')))
+
+#[dnn_after]
+fc2_lay=list(map(int, options.fc2_lay.split(','))) + [1]
+fc2_drop=list(map(float, options.fc2_drop.split(','))) + [0.0]
+fc2_use_laynorm_inp=str_to_bool(options.fc2_use_laynorm_inp) 
+fc2_use_batchnorm_inp=str_to_bool(options.fc2_use_batchnorm_inp)
+fc2_use_batchnorm=list(map(str_to_bool, options.fc2_use_batchnorm.split(','))) + [False]
+fc2_use_laynorm=list(map(str_to_bool, options.fc2_use_laynorm.split(','))) + [False]
+fc2_act=list(map(str, options.fc2_act.split(','))) + ['softplus']
+
 
 #[optimization]
 lr=float(options.lr)
 batch_size=int(options.batch_size)
 N_epochs=int(options.N_epochs)
-N_batches=int(options.N_batches)
-N_eval_epoch=int(options.N_eval_epoch)
 seed=int(options.seed)
 cuda=options.cuda == 'True'
 patience=int(options.patience)
@@ -153,12 +175,62 @@ np.random.seed(seed)
 # loss function
 cost = nn.L1Loss()
 
-	
-# Converting context and shift in samples
-wlen=8
 
-# Feature extractor CNN
-CNN_arch = {'input_dim': wlen,
+if fc1_lay_use:
+	MLP_before = {'input_dim': wlen,
+				'fc_lay': fc1_lay,
+				'fc_drop': fc1_drop, 
+				'fc_use_batchnorm': fc1_use_batchnorm,
+				'fc_use_laynorm': fc1_use_laynorm,
+				'fc_use_laynorm_inp': fc1_use_laynorm_inp,
+				'fc_use_batchnorm_inp':fc1_use_batchnorm_inp,
+				'fc_act': fc1_act,
+				}
+else:
+	MLP_before = None
+
+if architecture == 'Transformer_features':
+	MLP_after = {'input_dim': tr_hidden_size,
+			'fc_lay': fc2_lay,
+			'fc_drop': fc2_drop, 
+			'fc_use_batchnorm': fc2_use_batchnorm,
+			'fc_use_laynorm': fc2_use_laynorm,
+			'fc_use_laynorm_inp': fc2_use_laynorm_inp,
+			'fc_use_batchnorm_inp':fc2_use_batchnorm_inp,
+			'fc_act': fc2_act,
+			}
+	model = FunTimesTransformer(MLP_before, MLP_after,
+		tr_embed_dim, tr_max_positions, tr_pos, tr_num_layers,
+		tr_num_heads, tr_filter_size, tr_hidden_size, tr_dropout, 
+		tr_attention_dropout, tr_relu_dropout)
+
+elif architecture == 'LSTM_raw':
+	MLP_after = {'input_dim': lstm_hidden_size + lstm_hidden_size * lstm_bidirectional,
+			'fc_lay': fc2_lay,
+			'fc_drop': fc2_drop, 
+			'fc_use_batchnorm': fc2_use_batchnorm,
+			'fc_use_laynorm': fc2_use_laynorm,
+			'fc_use_laynorm_inp': fc2_use_laynorm_inp,
+			'fc_use_batchnorm_inp':fc2_use_batchnorm_inp,
+			'fc_act': fc2_act,
+			}
+	model = FunTimesLSTM(MLP_before, MLP_after, lstm_embed_dim, lstm_hidden_size, lstm_num_layers, lstm_bidirectional, lstm_dropout_in, lstm_dropout_out, raw=True)
+
+elif architecture == 'LSTM_features':
+	MLP_after = {'input_dim': lstm_hidden_size + lstm_hidden_size * lstm_bidirectional,
+			'fc_lay': fc2_lay,
+			'fc_drop': fc2_drop, 
+			'fc_use_batchnorm': fc2_use_batchnorm,
+			'fc_use_laynorm': fc2_use_laynorm,
+			'fc_use_laynorm_inp': fc2_use_laynorm_inp,
+			'fc_use_batchnorm_inp':fc2_use_batchnorm_inp,
+			'fc_act': fc2_act,
+			}
+	model = FunTimesLSTM(MLP_before, MLP_after, lstm_embed_dim, lstm_hidden_size, lstm_num_layers, lstm_bidirectional, lstm_dropout_in, lstm_dropout_out, raw=False)
+
+else:
+	if architecture in ['SincNet_raw', 'CNN_raw']:
+		CNN_arch = {'input_dim': wlen,
 					'fs': fs,
 					'cnn_N_filt': cnn_N_filt,
 					'cnn_len_filt': cnn_len_filt,
@@ -170,10 +242,12 @@ CNN_arch = {'input_dim': wlen,
 					'cnn_act': cnn_act,
 					'cnn_drop':cnn_drop,          
 					}
-#CNN_net = CNN(CNN_arch)
-LSTM_net = LSTM()
+		if architecture == 'SincNet_raw':
+			CNN_net = SincNet(CNN_arch)
+		else:
+			CNN_net = ConvNet(CNN_arch)
 
-DNN1_arch = {'input_dim': LSTM_net.out_dim,
+		MLP_after = {'input_dim': CNN_net.out_dim,
 					'fc_lay': fc_lay,
 					'fc_drop': fc_drop, 
 					'fc_use_batchnorm': fc_use_batchnorm,
@@ -182,19 +256,15 @@ DNN1_arch = {'input_dim': LSTM_net.out_dim,
 					'fc_use_batchnorm_inp':fc_use_batchnorm_inp,
 					'fc_act': fc_act,
 					}
+		model = FunTimesCNN(MLP_before, MLP_after, CNN_arch, use_sinc_net=architecture=='SincNet_raw')
 
-DNN2_arch = {'input_dim':fc_lay[-1] ,
-					'fc_lay': class_lay,
-					'fc_drop': class_drop, 
-					'fc_use_batchnorm': class_use_batchnorm,
-					'fc_use_laynorm': class_use_laynorm,
-					'fc_use_laynorm_inp': class_use_laynorm_inp,
-					'fc_use_batchnorm_inp':class_use_batchnorm_inp,
-					'fc_act': class_act,
-					}
+	elif architecture == 'CNN_features':
+		# TODO
+		model = EZConv()
+	
+	else:
+		print('Model must be one of: Transformer_features, LSTM_raw, LSTM_features, CNN_raw, CNN_features, SincNet_raw')
 
-model = FunTimes(CNN_arch, DNN1_arch, DNN2_arch, use_sinc_net=use_sinc_net)
-# model = FunTimesLSTM()
 
 if cuda:
 	cost = cost.cuda()
@@ -332,5 +402,6 @@ for i, sample in enumerate(tqdm(test_loader)):
 
 print(submission.head())
 # Save
-submission.to_csv('SincNet_submission.csv')
-print ("Prediction saved as SincNet_submission.csv")
+outfile = '{}_submission.csv'.format(architecture)
+submission.to_csv(outfile)
+print ("Prediction saved as {}".format(outfile))

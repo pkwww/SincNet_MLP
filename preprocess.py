@@ -5,10 +5,11 @@ import pandas as pd
 from tqdm import tqdm
 import datetime
 import os
+from scipy.stats import kurtosis, skew
 
-USE_MIDDLE_AS_TARGET = False
+USE_MIDDLE_AS_TARGET = True
 USE_FEATURES = True
-FOLDER_NAME='features_last'
+FOLDER_NAME='sliding_features_mid'
 
 def extract_features(z):
 	z = np.array(z)
@@ -19,13 +20,22 @@ def extract_features(z):
 				 np.quantile(z, 0.01, axis=0),
 				 np.quantile(z, 0.05, axis=0),
 				 np.quantile(z, 0.95, axis=0),
-				 np.quantile(z, 0.99, axis=0)])
+				 np.quantile(z, 0.99, axis=0),]
+				 # kurtosis(z, bias=False),
+				 # np.var(z),
+				 # skew(z),
+				 # np.median(z),
+				 # np.mean(np.abs(z - z.mean())),
+				 # np.abs(z).mean(),
+				 # np.abs(z).std()]
+				 )
+
 
 seed = 1234
 np.random.seed(seed)
 
 # Down sample, each original is 150000
-num_samples = 150000
+num_samples = 40000
 step_interval = 1000 # 150000 / 1000 => 150 time stesp in RNN
 
 os.makedirs('prepared_data/' + FOLDER_NAME, exist_ok=True)
@@ -66,43 +76,57 @@ print('test_labels done.')
 
 print('***** Started processing training set at {} *****'.format(datetime.datetime.now()))
 
-with tqdm(total=4194) as pbar:
-	with open('raw_data/train.csv') as f:
-		signals = []
-		times = []
-		down_samples = []
-		targets = []
-		for i, line in enumerate(f):
-			if i == 0: continue
-			line = line.strip()
-			signal, time = line.split(',')
-			signal = int(signal)
-			time = float(time)
-			signals.append(signal)
-			times.append(time)
+# Juan: Grabbing segments of 150k sliding them 4095 elements at a time
+down_samples = []
+targets = []
 
-			if len(signals) == 150000:
-				if USE_FEATURES:
-					down_sample = []
-					for j in range(0, len(signals), step_interval):
-						feature = extract_features(signals[j:j+step_interval])
-						down_sample.append(feature)
-				else:
-					down_sample = signals
-					#down_sample = scipy.signal.resample(signals, num_samples)
+for enumerator, offset in enumerate(range(0, 150000, 3750)):
+	print('***** Processing {} out of {} at {} *****'.format(enumerator, len(range(0, 150000, 3750)), datetime.datetime.now()))
+	have_subtracted = False
 
-				down_samples.append(down_sample)
-				if USE_MIDDLE_AS_TARGET:
-					targets.append(times[len(times)//2])
-				else:
-					targets.append(times[-1])
+	with tqdm(total=4194) as pbar:
+		with open('raw_data/train.csv') as f:
+			signals = []
+			times = []
+			
+			for i, line in enumerate(f):
+				if i == 0: continue
+				line = line.strip()
+				signal, time = line.split(',')
+				signal = int(signal)
+				time = float(time)
+				signals.append(signal)
+				times.append(time)
 
-				signals = []
-				times = []
-				pbar.update(1)
+				if not have_subtracted and len(signals) == offset:
+					have_subtracted = True
+					signals = []
+					times = []
 
-		down_samples = np.array(down_samples)
-		targets = np.array(targets)
+				if len(signals) == 150000:
+					if USE_FEATURES:
+						down_sample = []
+						for j in range(0, len(signals), step_interval):
+							feature = extract_features(signals[j:j+step_interval])
+							down_sample.append(feature)
+					else:
+						down_sample = signals
+						#down_sample = scipy.signal.resample(signals, num_samples)
+
+					down_samples.append(down_sample)
+					if USE_MIDDLE_AS_TARGET:
+						targets.append(times[len(times)//2])
+					else:
+						targets.append(times[-1])
+
+					signals = []
+					times = []
+					pbar.update(1)
+
+
+
+down_samples = np.array(down_samples)
+targets = np.array(targets)
 
 print('Reading done.')
 print(down_samples.shape)

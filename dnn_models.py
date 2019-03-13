@@ -360,6 +360,102 @@ class MLP(nn.Module):
 		return x
 
 
+class MLP_for_me(nn.Module):
+	def __init__(self, options):
+		super(MLP_for_me, self).__init__()
+		
+		self.input_dim=int(options['input_dim'])
+		self.fc_lay=options['fc_lay']
+		self.fc_drop=options['fc_drop']
+		self.fc_use_batchnorm=options['fc_use_batchnorm']
+		self.fc_use_laynorm=options['fc_use_laynorm']
+		self.fc_use_laynorm_inp=options['fc_use_laynorm_inp']
+		self.fc_use_batchnorm_inp=options['fc_use_batchnorm_inp']
+		self.fc_act=options['fc_act']
+		
+	 
+		self.wx  = nn.ModuleList([])
+		self.bn  = nn.ModuleList([])
+		self.ln  = nn.ModuleList([])
+		self.act = nn.ModuleList([])
+		self.drop = nn.ModuleList([])
+	 
+
+	 
+		# input layer normalization
+		if self.fc_use_laynorm_inp:
+			self.ln0=LayerNorm(self.input_dim)
+			
+		# input batch normalization    
+		if self.fc_use_batchnorm_inp:
+			self.bn0=nn.BatchNorm1d(self.input_dim,momentum=0.05)
+			 
+			 
+		self.N_fc_lay=len(self.fc_lay)
+				 
+		current_input=self.input_dim
+		
+		# Initialization of hidden layers
+		
+		for i in range(self.N_fc_lay):
+			# dropout
+			self.drop.append(nn.Dropout(p=self.fc_drop[i]))
+		
+			# activation
+			self.act.append(act_fun(self.fc_act[i]))
+
+			add_bias=True
+			 
+			# layer norm initialization
+			self.ln.append(LayerNorm(self.fc_lay[i]))
+			self.bn.append(nn.BatchNorm1d(self.fc_lay[i],momentum=0.05))
+			 
+			if self.fc_use_laynorm[i] or self.fc_use_batchnorm[i]:
+				add_bias=False
+			 
+						
+			# Linear operations
+			self.wx.append(nn.Linear(current_input, self.fc_lay[i],bias=add_bias))
+			 
+			# weight initialization
+			self.wx[i].weight = torch.nn.Parameter(torch.Tensor(self.fc_lay[i],current_input).uniform_(-np.sqrt(0.01/(current_input+self.fc_lay[i])),np.sqrt(0.01/(current_input+self.fc_lay[i]))))
+			self.wx[i].bias = torch.nn.Parameter(torch.zeros(self.fc_lay[i]))
+			 
+			current_input=self.fc_lay[i]
+			 
+			 
+	def forward(self, x):	
+		# Applying Layer/Batch Norm
+		if bool(self.fc_use_laynorm_inp):
+			x=self.ln0((x))
+			
+		if bool(self.fc_use_batchnorm_inp):
+			x=self.bn0(x.transpose(-1, -2)).transpose(-1, -2)
+		
+		for i in range(self.N_fc_lay):
+
+			if self.fc_act[i]!='linear':
+				if self.fc_use_laynorm[i]:
+					x = self.drop[i](self.act[i](self.ln[i](self.wx[i](x))))
+				
+				elif self.fc_use_batchnorm[i]:
+					x = self.drop[i](self.act[i](self.bn[i](self.wx[i](x).transpose(-1, -2)).transpose(-1, -2)))
+
+				elif self.fc_use_batchnorm[i]==False and self.fc_use_laynorm[i]==False:
+					x = self.drop[i](self.act[i](self.wx[i](x)))
+				 
+			else:
+				if self.fc_use_laynorm[i]:
+					x = self.drop[i](self.ln[i](self.wx[i](x)))
+				
+				if self.fc_use_batchnorm[i]:
+					x = self.drop[i](self.bn[i](self.wx[i](x).transpose(-1, -2)).transpose(-1, -2))
+				
+				if self.fc_use_batchnorm[i]==False and self.fc_use_laynorm[i]==False:
+					x = self.drop[i](self.wx[i](x)) 
+		
+		return x
+
 
 class SincNet(nn.Module):
 		
@@ -510,14 +606,14 @@ class ConvNet(nn.Module):
 			# activation
 			self.act.append(act_fun(self.cnn_act[i]))
 									
-			# layer norm initialization         
+			# layer norm initialization  
 			self.ln.append(LayerNorm([N_filt,int((current_input-self.cnn_len_filt[i]+1)/self.cnn_max_pool_len[i])]))
 
 			self.bn.append(nn.BatchNorm1d(N_filt,int((current_input-self.cnn_len_filt[i]+1)/self.cnn_max_pool_len[i]),momentum=0.05))
 					
 
 			if i==0:
-				self.conv.append(nn.Conv1d(1, self.cnn_N_filt[i], self.cnn_len_filt[i]))
+				self.conv.append(nn.Conv1d(8, self.cnn_N_filt[i], self.cnn_len_filt[i]))
 						
 			else:
 				self.conv.append(nn.Conv1d(self.cnn_N_filt[i-1], self.cnn_N_filt[i], self.cnn_len_filt[i]))
@@ -530,6 +626,7 @@ class ConvNet(nn.Module):
 
 
 	def forward(self, x):
+		x = x.transpose(1, 2)
 		batch=x.shape[0]
 		seq_len=x.shape[1]
 		 
@@ -538,9 +635,8 @@ class ConvNet(nn.Module):
 			
 		if bool(self.cnn_use_batchnorm_inp):
 			x=self.bn0((x))
-			
+		
 		x=x.view(batch,1,seq_len)
-
 		 
 		for i in range(self.N_cnn_lay):
 				 
@@ -557,21 +653,7 @@ class ConvNet(nn.Module):
 		x = x.view(batch,-1)
 
 		return x
-		 
 
-class FunTimes(nn.Module):
-
-	def __init__(self, CNN_arch, DNN1_arch, DNN2_arch, use_sinc_net):
-		super(FunTimes, self).__init__()
-		if use_sinc_net:
-			self.CNN_net = SincNet(CNN_arch)
-		else:
-			self.CNN_net = ConvNet(CNN_arch)
-		self.DNN1_net = MLP(DNN1_arch)
-		self.DNN2_net = MLP(DNN2_arch)
-		
-	def forward(self, x):
-		return self.DNN2_net(self.DNN1_net(self.CNN_net(x)))
 
 
 class LSTM(nn.Module):
@@ -625,388 +707,456 @@ class LSTM(nn.Module):
 		return lstm_output
 
 
-class EZ_MLP(nn.Module):
-    def __init__(self):
-        super(EZ_MLP, self).__init__()
-        self.layers = nn.Sequential(
-            nn.Linear(256, 10),
-            nn.ReLU(),
-            # nn.Linear(10, 10),
-            # nn.ReLU(),
-            nn.Linear(10, 1),
-            nn.Softplus()
-        )
-        
-    def forward(self, x):
-        x = self.layers(x)
-        return x.squeeze(-1)
-
-class FunTimesLSTM(nn.Module):
-
-	def __init__(self):
-		super(FunTimesLSTM, self).__init__()
-		self.LSTM = TransformerEncoder()
-		self.EZ_MLP = EZ_MLP()
-
-		self.mlp1 = FeedForwardNetwork2(8, 256)
-		
-	def forward(self, x):
-		#hidden_size = x.size()[-1]
-		x = self.mlp1(x)
-		return self.EZ_MLP(self.LSTM(x))
-
-
-
-
-class FeedForwardNetwork2(nn.Module):
-    def __init__(self, hidden_size, filter_size):
-        super(FeedForwardNetwork2, self).__init__()
-        self.fc1 = Linear(hidden_size, filter_size, bias=False)
-        
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        return x
-
-
-
-
 
 def make_positions(tensor, padding_idx, left_pad):
-    """Replace non-padding symbols with their position numbers.
-    Position numbers begin at padding_idx+1.
-    Padding symbols are ignored, but it is necessary to specify whether padding
-    is added on the left side (left_pad=True) or right side (left_pad=False).
-    """
-    max_pos = padding_idx + 1 + tensor.size(1)
-    if not hasattr(make_positions, 'range_buf'):
-        make_positions.range_buf = tensor.new()
-    make_positions.range_buf = make_positions.range_buf.type_as(tensor)
-    if make_positions.range_buf.numel() < max_pos:
-        torch.arange(padding_idx + 1, max_pos, out=make_positions.range_buf)
-    mask = tensor.ne(padding_idx)
-    positions = make_positions.range_buf[:tensor.size(1)].expand_as(tensor)
-    if left_pad:
-        positions = positions - mask.size(1) + mask.long().sum(dim=1).unsqueeze(1)
-    return tensor.clone().masked_scatter_(mask, positions[mask])
+	"""Replace non-padding symbols with their position numbers.
+	Position numbers begin at padding_idx+1.
+	Padding symbols are ignored, but it is necessary to specify whether padding
+	is added on the left side (left_pad=True) or right side (left_pad=False).
+	"""
+	max_pos = padding_idx + 1 + tensor.size(1)
+	if not hasattr(make_positions, 'range_buf'):
+		make_positions.range_buf = tensor.new()
+	make_positions.range_buf = make_positions.range_buf.type_as(tensor)
+	if make_positions.range_buf.numel() < max_pos:
+		torch.arange(padding_idx + 1, max_pos, out=make_positions.range_buf)
+	mask = tensor.ne(padding_idx)
+	positions = make_positions.range_buf[:tensor.size(1)].expand_as(tensor)
+	if left_pad:
+		positions = positions - mask.size(1) + mask.long().sum(dim=1).unsqueeze(1)
+	return tensor.clone().masked_scatter_(mask, positions[mask])
 
 class LearnedPositionalEmbedding(nn.Embedding):
-    """This module learns positional embeddings up to a fixed maximum size.
-    Padding symbols are ignored, but it is necessary to specify whether padding
-    is added on the left side (left_pad=True) or right side (left_pad=False).
-    """
+	"""This module learns positional embeddings up to a fixed maximum size.
+	Padding symbols are ignored, but it is necessary to specify whether padding
+	is added on the left side (left_pad=True) or right side (left_pad=False).
+	"""
 
-    def __init__(self, num_embeddings, embedding_dim, padding_idx, left_pad):
-        super().__init__(num_embeddings, embedding_dim, padding_idx)
-        self.left_pad = left_pad
+	def __init__(self, num_embeddings, embedding_dim, padding_idx, left_pad):
+		super().__init__(num_embeddings, embedding_dim, padding_idx)
+		self.left_pad = left_pad
 
-    def forward(self, input, incremental_state=None):
-        """Input is expected to be of size [bsz x seqlen]."""
-        if incremental_state is not None:
-            # positions is the same for every token when decoding a single step
-            positions = input.data.new(1, 1).fill_(self.padding_idx + input.size(1))
-        else:
-            positions = make_positions(input.data, self.padding_idx, self.left_pad)
-        return super().forward(Variable(positions))
+	def forward(self, input, incremental_state=None):
+		"""Input is expected to be of size [bsz x seqlen]."""
+		if incremental_state is not None:
+			# positions is the same for every token when decoding a single step
+			positions = input.data.new(1, 1).fill_(self.padding_idx + input.size(1))
+		else:
+			positions = make_positions(input.data, self.padding_idx, self.left_pad)
+		return super().forward(Variable(positions))
 
-    def max_positions(self):
-        """Maximum number of supported positions."""
-        return self.num_embeddings - self.padding_idx - 1
+	def max_positions(self):
+		"""Maximum number of supported positions."""
+		return self.num_embeddings - self.padding_idx - 1
 
 
 class SinusoidalPositionalEmbedding(nn.Module):
-    """This module produces sinusoidal positional embeddings of any length.
-    Padding symbols are ignored, but it is necessary to specify whether padding
-    is added on the left side (left_pad=True) or right side (left_pad=False).
-    """
+	"""This module produces sinusoidal positional embeddings of any length.
+	Padding symbols are ignored, but it is necessary to specify whether padding
+	is added on the left side (left_pad=True) or right side (left_pad=False).
+	"""
 
-    def __init__(self, embedding_dim, padding_idx, left_pad, init_size=1024):
-        super().__init__()
-        self.embedding_dim = embedding_dim
-        self.padding_idx = padding_idx
-        self.left_pad = left_pad
-        self.register_buffer(
-            'weights',
-            SinusoidalPositionalEmbedding.get_embedding(
-                init_size,
-                embedding_dim,
-                padding_idx,
-            ),
-        )
+	def __init__(self, embedding_dim, padding_idx, left_pad, init_size=1024):
+		super().__init__()
+		self.embedding_dim = embedding_dim
+		self.padding_idx = padding_idx
+		self.left_pad = left_pad
+		self.register_buffer(
+			'weights',
+			SinusoidalPositionalEmbedding.get_embedding(
+				init_size,
+				embedding_dim,
+				padding_idx,
+			),
+		)
 
-    @staticmethod
-    def get_embedding(num_embeddings, embedding_dim, padding_idx=None):
-        """Build sinusoidal embeddings.
-        This matches the implementation in tensor2tensor, but differs slightly
-        from the description in Section 3.5 of "Attention Is All You Need".
-        """
-        half_dim = embedding_dim // 2
-        emb = math.log(10000) / (half_dim - 1)
-        emb = torch.exp(torch.arange(half_dim) * -emb)
-        emb = torch.arange(num_embeddings).unsqueeze(1) * emb.unsqueeze(0)
-        emb = torch.cat([torch.sin(emb), torch.cos(emb)], dim=1).view(num_embeddings, -1)
-        if embedding_dim % 2 == 1:
-            # zero pad
-            emb = torch.cat([emb, torch.zeros(num_embeddings, 1)], dim=1)
-        if padding_idx is not None:
-            emb[padding_idx, :] = 0
-        return emb
+	@staticmethod
+	def get_embedding(num_embeddings, embedding_dim, padding_idx=None):
+		"""Build sinusoidal embeddings.
+		This matches the implementation in tensor2tensor, but differs slightly
+		from the description in Section 3.5 of "Attention Is All You Need".
+		"""
+		half_dim = embedding_dim // 2
+		emb = math.log(10000) / (half_dim - 1)
+		emb = torch.exp(torch.arange(half_dim) * -emb)
+		emb = torch.arange(num_embeddings).unsqueeze(1) * emb.unsqueeze(0)
+		emb = torch.cat([torch.sin(emb), torch.cos(emb)], dim=1).view(num_embeddings, -1)
+		if embedding_dim % 2 == 1:
+			# zero pad
+			emb = torch.cat([emb, torch.zeros(num_embeddings, 1)], dim=1)
+		if padding_idx is not None:
+			emb[padding_idx, :] = 0
+		return emb
 
-    def forward(self, input, incremental_state=None):
-        """Input is expected to be of size [bsz x seqlen]."""
-        # recompute/expand embeddings if needed
-        bsz, seq_len = input.size()
-        max_pos = self.padding_idx + 1 + seq_len
-        if max_pos > self.weights.size(0):
-            self.weights = SinusoidalPositionalEmbedding.get_embedding(
-                max_pos,
-                self.embedding_dim,
-                self.padding_idx,
-            ).type_as(self.weights)
-        weights = Variable(self.weights)
+	def forward(self, input, incremental_state=None):
+		"""Input is expected to be of size [bsz x seqlen]."""
+		# recompute/expand embeddings if needed
+		bsz, seq_len = input.size()
+		max_pos = self.padding_idx + 1 + seq_len
+		if max_pos > self.weights.size(0):
+			self.weights = SinusoidalPositionalEmbedding.get_embedding(
+				max_pos,
+				self.embedding_dim,
+				self.padding_idx,
+			).type_as(self.weights)
+		weights = Variable(self.weights)
 
-        if incremental_state is not None:
-            # positions is the same for every token when decoding a single step
-            return weights[self.padding_idx + seq_len, :].expand(bsz, 1, -1)
+		if incremental_state is not None:
+			# positions is the same for every token when decoding a single step
+			return weights[self.padding_idx + seq_len, :].expand(bsz, 1, -1)
 
-        positions = Variable(make_positions(input.data, self.padding_idx, self.left_pad))
-        return weights.index_select(0, positions.view(-1)).view(bsz, seq_len, -1)
+		positions = Variable(make_positions(input.data, self.padding_idx, self.left_pad))
+		return weights.index_select(0, positions.view(-1)).view(bsz, seq_len, -1)
 
-    def max_positions(self):
-        """Maximum number of supported positions."""
-        return int(1e5)  # an arbitrary large number
+	def max_positions(self):
+		"""Maximum number of supported positions."""
+		return int(1e5)  # an arbitrary large number
 
 
 class LayerNormalization(nn.Module):
-    """Layer normalization for module"""
+	"""Layer normalization for module"""
 
-    def __init__(self, hidden_size, eps=1e-6, affine=True):
-        super(LayerNormalization, self).__init__()
+	def __init__(self, hidden_size, eps=1e-6, affine=True):
+		super(LayerNormalization, self).__init__()
 
-        self.affine = affine
-        self.eps = eps
-        if self.affine:
-            self.gamma = nn.Parameter(torch.ones(hidden_size))
-            self.beta = nn.Parameter(torch.zeros(hidden_size))
+		self.affine = affine
+		self.eps = eps
+		if self.affine:
+			self.gamma = nn.Parameter(torch.ones(hidden_size))
+			self.beta = nn.Parameter(torch.zeros(hidden_size))
 
-    def forward(self, x):
-        mean = x.mean(-1, keepdim=True)
-        std = x.std(-1, keepdim=True)
-        return self.gamma * (x - mean) / (std + self.eps) + self.beta
+	def forward(self, x):
+		mean = x.mean(-1, keepdim=True)
+		std = x.std(-1, keepdim=True)
+		return self.gamma * (x - mean) / (std + self.eps) + self.beta
 
 
 def PositionalEmbedding(num_embeddings, embedding_dim, padding_idx, left_pad):
-    m = LearnedPositionalEmbedding(num_embeddings, embedding_dim, padding_idx, left_pad)
-    m.weight.data.normal_(0, 0.1)
-    return m
+	m = LearnedPositionalEmbedding(num_embeddings, embedding_dim, padding_idx, left_pad)
+	m.weight.data.normal_(0, 0.1)
+	return m
 
 def residual(x, y, dropout, training):
-    """Residual connection"""
-    y = F.dropout(y, p=dropout, training=training)
-    return x + y
+	"""Residual connection"""
+	y = F.dropout(y, p=dropout, training=training)
+	return x + y
 
 def Linear(in_features, out_features, bias=True, dropout=0):
-    """Weight-normalized Linear layer (input: N x T x C)"""
-    m = nn.Linear(in_features, out_features, bias=bias)
-    m.weight.data.uniform_(-0.1, 0.1)
-    if bias:
-        m.bias.data.uniform_(-0.1, 0.1)
-    return m
+	"""Weight-normalized Linear layer (input: N x T x C)"""
+	m = nn.Linear(in_features, out_features, bias=bias)
+	m.weight.data.uniform_(-0.1, 0.1)
+	if bias:
+		m.bias.data.uniform_(-0.1, 0.1)
+	return m
 
 def split_heads(x, num_heads):
-    """split x into multi heads
-    Args:
-        x: [batch_size, length, depth]
-    Returns:
-        y: [[batch_size, length, depth / num_heads] x heads]
-    """
-    sz = x.size()
-    # x -> [batch_size, length, heads, depth / num_heads]
-    x = x.view(sz[0], sz[1], num_heads, sz[2] // num_heads)
-    # [batch_size, length, 1, depth // num_heads] * 
-    heads = torch.chunk(x, num_heads, 2)
-    x = []
-    for i in range(num_heads):
-        x.append(torch.squeeze(heads[i], 2))
-    return x
+	"""split x into multi heads
+	Args:
+		x: [batch_size, length, depth]
+	Returns:
+		y: [[batch_size, length, depth / num_heads] x heads]
+	"""
+	sz = x.size()
+	# x -> [batch_size, length, heads, depth / num_heads]
+	x = x.view(sz[0], sz[1], num_heads, sz[2] // num_heads)
+	# [batch_size, length, 1, depth // num_heads] * 
+	heads = torch.chunk(x, num_heads, 2)
+	x = []
+	for i in range(num_heads):
+		x.append(torch.squeeze(heads[i], 2))
+	return x
 
 def combine_heads(x):
-    """combine multi heads
-    Args:
-        x: [batch_size, length, depth / num_heads] x heads
-    Returns:
-        x: [batch_size, length, depth]
-    """
-    return torch.cat(x, 2)
+	"""combine multi heads
+	Args:
+		x: [batch_size, length, depth / num_heads] x heads
+	Returns:
+		x: [batch_size, length, depth]
+	"""
+	return torch.cat(x, 2)
 
 
 def dot_product_attention(q, k, v, bias, dropout, to_weights=False):
-    """dot product for query-key-value
-    Args:
-        q: query antecedent, [batch, length, depth]
-        k: key antecedent,   [batch, length, depth]
-        v: value antecedent, [batch, length, depth]
-        bias: masked matrix
-        dropout: dropout rate
-        to_weights: whether to print weights
-    """
-    # [batch, length, depth] x [batch, depth, length] -> [batch, length, length]
-    logits = torch.bmm(q, k.transpose(1, 2).contiguous())
-    if bias is not None:
-        logits += bias
-    size = logits.size()
-    weights = F.softmax(logits.view(size[0] * size[1], size[2]), dim=1)
-    weights = weights.view(size)
-    if to_weights:
-        return torch.bmm(weights, v), weights
-    else:
-        return torch.bmm(weights, v)
+	"""dot product for query-key-value
+	Args:
+		q: query antecedent, [batch, length, depth]
+		k: key antecedent,   [batch, length, depth]
+		v: value antecedent, [batch, length, depth]
+		bias: masked matrix
+		dropout: dropout rate
+		to_weights: whether to print weights
+	"""
+	# [batch, length, depth] x [batch, depth, length] -> [batch, length, length]
+	logits = torch.bmm(q, k.transpose(1, 2).contiguous())
+	if bias is not None:
+		logits += bias
+	size = logits.size()
+	weights = F.softmax(logits.view(size[0] * size[1], size[2]), dim=1)
+	weights = weights.view(size)
+	if to_weights:
+		return torch.bmm(weights, v), weights
+	else:
+		return torch.bmm(weights, v)
 
 
 class FeedForwardNetwork(nn.Module):
-    def __init__(self, hidden_size, filter_size, dropout):
-        super(FeedForwardNetwork, self).__init__()
-        self.fc1 = Linear(hidden_size, filter_size, bias=False)
-        self.fc2 = Linear(filter_size, hidden_size, bias=False)
-        self.dropout = dropout
+	def __init__(self, hidden_size, filter_size, dropout):
+		super(FeedForwardNetwork, self).__init__()
+		self.fc1 = Linear(hidden_size, filter_size, bias=False)
+		self.fc2 = Linear(filter_size, hidden_size, bias=False)
+		self.dropout = dropout
 
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.fc2(x)
-        return x
+	def forward(self, x):
+		x = F.relu(self.fc1(x))
+		x = F.dropout(x, p=self.dropout, training=self.training)
+		x = self.fc2(x)
+		return x
 
 
 class MultiheadAttention(nn.Module):
-    """Multi-head attention mechanism"""
-    def __init__(self, 
-                 key_depth, value_depth, output_depth,
-                 num_heads, dropout=0.1):
-        super(MultiheadAttention, self).__init__()
+	"""Multi-head attention mechanism"""
+	def __init__(self, 
+				 key_depth, value_depth, output_depth,
+				 num_heads, dropout=0.1):
+		super(MultiheadAttention, self).__init__()
 
-        self._query = Linear(key_depth, key_depth, bias=False)
-        self._key = Linear(key_depth, key_depth, bias=False)
-        self._value = Linear(value_depth, value_depth, bias=False)
-        self.output_perform = Linear(value_depth, output_depth, bias=False)
+		self._query = Linear(key_depth, key_depth, bias=False)
+		self._key = Linear(key_depth, key_depth, bias=False)
+		self._value = Linear(value_depth, value_depth, bias=False)
+		self.output_perform = Linear(value_depth, output_depth, bias=False)
 
-        self.num_heads = num_heads
-        self.key_depth_per_head = key_depth // num_heads
-        self.dropout = dropout
-        
-    def forward(self, query_antecedent, memory_antecedent, bias, to_weights=False):
-        if memory_antecedent is None:
-            memory_antecedent = query_antecedent
-        q = self._query(query_antecedent)
-        k = self._key(memory_antecedent)
-        v = self._value(memory_antecedent)
-        q *= self.key_depth_per_head ** -0.5
-        
-        # split heads
-        q = split_heads(q, self.num_heads)
-        k = split_heads(k, self.num_heads)
-        v = split_heads(v, self.num_heads)
+		self.num_heads = num_heads
+		self.key_depth_per_head = key_depth // num_heads
+		self.dropout = dropout
+		
+	def forward(self, query_antecedent, memory_antecedent, bias, to_weights=False):
+		if memory_antecedent is None:
+			memory_antecedent = query_antecedent
+		q = self._query(query_antecedent)
+		k = self._key(memory_antecedent)
+		v = self._value(memory_antecedent)
+		q *= self.key_depth_per_head ** -0.5
+		
+		# split heads
+		q = split_heads(q, self.num_heads)
+		k = split_heads(k, self.num_heads)
+		v = split_heads(v, self.num_heads)
 
-        x = []
-        avg_attn_scores = None
-        for i in range(self.num_heads):
-            results = dot_product_attention(q[i], k[i], v[i],
-                                            bias,
-                                            self.dropout,
-                                            to_weights)
-            if to_weights:
-                y, attn_scores = results
-                if avg_attn_scores is None:
-                    avg_attn_scores = attn_scores
-                else:
-                    avg_attn_scores.add_(attn_scores)
-            else:
-                y = results
-            x.append(y)
-        x = combine_heads(x)
-        x = self.output_perform(x)
-        if to_weights:
-            return x, avg_attn_scores / self.num_heads
-        else:
-            return x
+		x = []
+		avg_attn_scores = None
+		for i in range(self.num_heads):
+			results = dot_product_attention(q[i], k[i], v[i],
+											bias,
+											self.dropout,
+											to_weights)
+			if to_weights:
+				y, attn_scores = results
+				if avg_attn_scores is None:
+					avg_attn_scores = attn_scores
+				else:
+					avg_attn_scores.add_(attn_scores)
+			else:
+				y = results
+			x.append(y)
+		x = combine_heads(x)
+		x = self.output_perform(x)
+		if to_weights:
+			return x, avg_attn_scores / self.num_heads
+		else:
+			return x
 
 def attention_bias_ignore_padding(src_tokens, padding_idx):
-    """Calculate the padding mask based on which embedding are zero
-    Args:
-        src_tokens: [batch_size, length]
-    Returns:
-        bias: [batch_size, length]
-    """
-    return src_tokens.eq(padding_idx).unsqueeze(1)
+	"""Calculate the padding mask based on which embedding are zero
+	Args:
+		src_tokens: [batch_size, length]
+	Returns:
+		bias: [batch_size, length]
+	"""
+	return src_tokens.eq(padding_idx).unsqueeze(1)
 
 def encoder_attention_bias(bias):
-    batch_size, _, length = bias.size()
-    return bias.expand(batch_size, length, length).float() * -1e9
+	batch_size, _, length = bias.size()
+	return bias.expand(batch_size, length, length).float() * -1e9
 
 
 class TransformerEncoder(nn.Module):
-    """Transformer encoder."""
-    def __init__(self, embed_dim=256, max_positions=1024, pos="learned",
-                 num_layers=4, num_heads=8,
-                 filter_size=256, hidden_size=256,
-                 dropout=0.1, attention_dropout=0.1, relu_dropout=0.1):
-        super(TransformerEncoder, self).__init__()
-        assert pos == "learned" or pos == "timing" or pos == "nopos"
+	"""Transformer encoder."""
+	def __init__(self, embed_dim=256, max_positions=1024, pos="learned",
+				 num_layers=4, num_heads=8,
+				 filter_size=256, hidden_size=256,
+				 dropout=0.1, attention_dropout=0.1, relu_dropout=0.1):
+		super(TransformerEncoder, self).__init__()
+		assert pos == "learned" or pos == "timing" or pos == "nopos"
 
-        self.dropout = dropout
-        self.attention_dropout = attention_dropout
-        self.relu_dropout = relu_dropout
-        self.pos = pos
+		self.dropout = dropout
+		self.attention_dropout = attention_dropout
+		self.relu_dropout = relu_dropout
+		self.pos = pos
 
-        padding_idx = 0
-        if self.pos == "learned":
-            self.embed_positions = PositionalEmbedding(max_positions, embed_dim, padding_idx,
-                                                       left_pad=False)
-        if self.pos == "timing":
-            self.embed_positions = SinusoidalPositionalEmbedding(embed_dim, padding_idx,
-                                                                 left_pad=False)
+		padding_idx = 0
+		if self.pos == "learned":
+			self.embed_positions = PositionalEmbedding(max_positions, embed_dim, padding_idx,
+													   left_pad=False)
+		if self.pos == "timing":
+			self.embed_positions = SinusoidalPositionalEmbedding(embed_dim, padding_idx,
+																 left_pad=False)
 
-        self.layers = num_layers
+		self.layers = num_layers
 
-        self.self_attention_blocks = nn.ModuleList()
-        self.ffn_blocks = nn.ModuleList()
-        self.norm1_blocks = nn.ModuleList()
-        self.norm2_blocks = nn.ModuleList()
-        for i in range(num_layers):
-            self.self_attention_blocks.append(MultiheadAttention(hidden_size,
-                                                                 hidden_size,
-                                                                 hidden_size,
-                                                                 num_heads))
-            self.ffn_blocks.append(FeedForwardNetwork(hidden_size, filter_size, relu_dropout))
-            self.norm1_blocks.append(LayerNormalization(hidden_size))
-            self.norm2_blocks.append(LayerNormalization(hidden_size))
-        self.out_norm = LayerNormalization(hidden_size)
+		self.self_attention_blocks = nn.ModuleList()
+		self.ffn_blocks = nn.ModuleList()
+		self.norm1_blocks = nn.ModuleList()
+		self.norm2_blocks = nn.ModuleList()
+		for i in range(num_layers):
+			self.self_attention_blocks.append(MultiheadAttention(hidden_size,
+																 hidden_size,
+																 hidden_size,
+																 num_heads))
+			self.ffn_blocks.append(FeedForwardNetwork(hidden_size, filter_size, relu_dropout))
+			self.norm1_blocks.append(LayerNormalization(hidden_size))
+			self.norm2_blocks.append(LayerNormalization(hidden_size))
+		self.out_norm = LayerNormalization(hidden_size)
 
-    def forward(self, encoder_input):
-        # embed tokens plus positions
-        batch_size, src_time_steps, embed_dim = encoder_input.size()
-        src_lengths = [src_time_steps] * batch_size
-        src_tokens = encoder_input[:, :, 0]
-        padding_idx = 0
-        input_to_padding = attention_bias_ignore_padding(src_tokens, padding_idx)
-        encoder_self_attention_bias = encoder_attention_bias(input_to_padding)
-        if self.pos != "nopos":
-            encoder_input += self.embed_positions(src_tokens.type(torch.cuda.LongTensor))
-            #encoder_input += self.embed_positions(src_tokens.type(torch.LongTensor))
+	def forward(self, encoder_input):
+		# embed tokens plus positions
+		batch_size, src_time_steps, embed_dim = encoder_input.size()
+		src_lengths = [src_time_steps] * batch_size
+		src_tokens = encoder_input[:, :, 0]
+		padding_idx = 0
+		input_to_padding = attention_bias_ignore_padding(src_tokens, padding_idx)
+		encoder_self_attention_bias = encoder_attention_bias(input_to_padding)
+		if self.pos != "nopos":
+			#encoder_input += self.embed_positions(src_tokens.type(torch.cuda.LongTensor))
+			encoder_input += self.embed_positions(src_tokens.type(torch.LongTensor))
 
-        x = F.dropout(encoder_input, p=self.dropout, training=self.training)
-        for self_attention, ffn, norm1, norm2 in zip(self.self_attention_blocks,
-                                                     self.ffn_blocks,
-                                                     self.norm1_blocks,
-                                                     self.norm2_blocks):
-            y = self_attention(norm1(x), None, encoder_self_attention_bias)
-            x = residual(x, y, self.dropout, self.training)
-            y = ffn(norm2(x))
-            x = residual(x, y, self.dropout, self.training)
-        x = self.out_norm(x)
-        return x
+		x = F.dropout(encoder_input, p=self.dropout, training=self.training)
+		for self_attention, ffn, norm1, norm2 in zip(self.self_attention_blocks,
+													 self.ffn_blocks,
+													 self.norm1_blocks,
+													 self.norm2_blocks):
+			y = self_attention(norm1(x), None, encoder_self_attention_bias)
+			x = residual(x, y, self.dropout, self.training)
+			y = ffn(norm2(x))
+			x = residual(x, y, self.dropout, self.training)
+		x = self.out_norm(x)
+		return x
 
-    def max_positions(self):
-        """Maximum input length supported by the encoder."""
-        if self.pos == "learned":
-            return self.embed_positions.max_positions()
-        else:
-            return 1024
+	def max_positions(self):
+		"""Maximum input length supported by the encoder."""
+		if self.pos == "learned":
+			return self.embed_positions.max_positions()
+		else:
+			return 1024
+		 
+
+class FunTimesCNN(nn.Module):
+
+	def __init__(self, MLP_before_arch, MLP_after_arch, CNN_arch, use_sinc_net):
+		super(FunTimes, self).__init__()
+		if MLP_before_arch != None:
+			self.embed_dim_projection = MLP_for_me(MLP_before_arch)
+		else:
+			self.embed_dim_projection = None
+
+		if use_sinc_net:
+			self.CNN_net = SincNet(CNN_arch)
+		else:
+			self.CNN_net = ConvNet(CNN_arch)
+		self.result_projection = MLP_for_me(MLP_after_arch)
+		
+	def forward(self, x):
+		if self.embed_dim_projection:
+			x = self.embed_dim_projection(x)
+		return self.result_projection(self.CNN_net(x))
+
+class FunTimesLSTM(nn.Module):
+
+	def __init__(self, MLP_before_arch, MLP_after_arch, lstm_embed_dim, lstm_hidden_size, lstm_num_layers, lstm_bidirectional, lstm_dropout_in, lstm_dropout_out, raw=False):
+		super(FunTimesLSTM, self).__init__()
+
+		if MLP_before_arch != None:
+			self.embed_dim_projection = MLP_for_me(MLP_before_arch)
+		else:
+			self.embed_dim_projection = None
+		self.LSTM = LSTM(lstm_embed_dim, lstm_hidden_size, lstm_num_layers, lstm_bidirectional, lstm_dropout_in, lstm_dropout_out)
+		self.result_projection = MLP_for_me(MLP_after_arch)
+		self.raw = raw
+		
+	def forward(self, x):
+		if self.raw:
+			x = x.unsqueeze(-1)
+		if self.embed_dim_projection:
+			x = self.embed_dim_projection(x)
+		x = self.LSTM(x)
+		x = self.result_projection(x)
+		return x.squeeze(-1)
+
+
+class FunTimesTransformer(nn.Module):
+
+	def __init__(self, MLP_before_arch, MLP_after_arch, tr_embed_dim, tr_max_positions, tr_pos, tr_num_layers,
+		tr_num_heads, tr_filter_size, tr_hidden_size, tr_dropout, 
+		tr_attention_dropout, tr_relu_dropout):
+
+		super(FunTimesTransformer, self).__init__()
+
+		if MLP_before_arch != None:
+			self.embed_dim_projection = MLP_for_me(MLP_before_arch)
+		else:
+			self.embed_dim_projection = None
+
+		self.transformer = TransformerEncoder(
+			tr_embed_dim, tr_max_positions, tr_pos, tr_num_layers,
+			tr_num_heads, tr_filter_size, tr_hidden_size, tr_dropout, 
+			tr_attention_dropout, tr_relu_dropout)
+
+		self.result_projection = MLP_for_me(MLP_after_arch)
+		
+	def forward(self, x):
+		if self.embed_dim_projection:
+			x = self.embed_dim_projection(x)
+		x = self.transformer(x)
+		x = self.result_projection(x)
+		return x.squeeze(-1)
+
+
+class YeetZ_MLP(nn.Module):
+	def __init__(self):
+		super(YeetZ_MLP, self).__init__()
+		self.layers = nn.Sequential(
+			nn.Linear(60, 10),
+			nn.ReLU(),
+			nn.Linear(10, 1),
+			nn.Softplus()
+		)
+		
+	def forward(self, x):
+		x = self.layers(x)
+		return x.squeeze(-1)
+
+class EZConv(nn.Module):
+	def __init__(self):
+		super(EZConv, self).__init__()
+		self.conv = nn.Conv1d(8, 80, 25)
+		self.conv2 = nn.Conv1d(80, 60, 5)
+		self.conv3 = nn.Conv1d(60, 60, 5)
+		self.act = nn.LeakyReLU(0.2)
+		self.mlp = YeetZ_MLP()
+
+	def forward(self, x):
+		x = x.transpose(1, 2)
+		x = self.conv(x)
+		x = F.max_pool1d(x, 3)
+		x = self.act(x)
+
+		x = self.conv2(x)
+		x = F.max_pool1d(x, 3)
+		x = self.act(x)
+
+		x = self.conv3(x)
+		x = F.max_pool1d(x, 3)
+		x = self.act(x)
+
+		x = x.transpose(1, 2)
+		x = self.mlp(x)
+		return x

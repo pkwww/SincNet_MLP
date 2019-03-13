@@ -18,7 +18,7 @@ def read_conf():
  
  parser=OptionParser()
  parser.add_option("--cfg") # Mandatory
- parser.add_option("--use_sinc_net")
+ parser.add_option("--model")
  (options,args)=parser.parse_args()
  cfg_file=options.cfg
  Config = ConfigParser.ConfigParser()
@@ -37,10 +37,9 @@ def read_conf():
 
  #[windowing]
  options.fs=Config.get('windowing', 'fs')
- options.cw_len=Config.get('windowing', 'cw_len')
- options.cw_shift=Config.get('windowing', 'cw_shift')
 
  #[cnn]
+ options.wlen=Config.get('cnn', 'wlen')
  options.cnn_N_filt=Config.get('cnn', 'cnn_N_filt')
  options.cnn_len_filt=Config.get('cnn', 'cnn_len_filt')
  options.cnn_max_pool_len=Config.get('cnn', 'cnn_max_pool_len')
@@ -51,32 +50,50 @@ def read_conf():
  options.cnn_act=Config.get('cnn', 'cnn_act')
  options.cnn_drop=Config.get('cnn', 'cnn_drop')
 
+ #[transformer]
+ options.tr_embed_dim=Config.get('transformer', 'tr_embed_dim')
+ options.tr_max_positions=Config.get('transformer', 'tr_max_positions')
+ options.tr_pos=Config.get('transformer', 'tr_pos')
+ options.tr_num_layers=Config.get('transformer', 'tr_num_layers')
+ options.tr_num_heads=Config.get('transformer', 'tr_num_heads')
+ options.tr_filter_size=Config.get('transformer', 'tr_filter_size')
+ options.tr_hidden_size=Config.get('transformer', 'tr_hidden_size')
+ options.tr_dropout=Config.get('transformer', 'tr_dropout')
+ options.tr_attention_dropout=Config.get('transformer', 'tr_attention_dropout')
+ options.tr_relu_dropout=Config.get('transformer', 'tr_relu_dropout')
 
- #[dnn]
- options.fc_lay=Config.get('dnn', 'fc_lay')
- options.fc_drop=Config.get('dnn', 'fc_drop')
- options.fc_use_laynorm_inp=Config.get('dnn', 'fc_use_laynorm_inp')
- options.fc_use_batchnorm_inp=Config.get('dnn', 'fc_use_batchnorm_inp')
- options.fc_use_batchnorm=Config.get('dnn', 'fc_use_batchnorm')
- options.fc_use_laynorm=Config.get('dnn', 'fc_use_laynorm')
- options.fc_act=Config.get('dnn', 'fc_act')
+ #[lstm]
+ options.lstm_embed_dim=Config.get('lstm', 'lstm_embed_dim')
+ options.lstm_hidden_size=Config.get('lstm', 'lstm_hidden_size')
+ options.lstm_num_layers=Config.get('lstm', 'lstm_num_layers')
+ options.lstm_bidirectional=Config.get('lstm', 'lstm_bidirectional')
+ options.lstm_dropout_in=Config.get('lstm', 'lstm_dropout_in')
+ options.lstm_dropout_out=Config.get('lstm', 'lstm_dropout_out')
+ 
+ #[dnn_before]
+ options.fc1_lay_use=Config.get('dnn_before', 'fc1_lay_use')
+ options.fc1_lay=Config.get('dnn_before', 'fc1_lay')
+ options.fc1_drop=Config.get('dnn_before', 'fc1_drop')
+ options.fc1_use_laynorm_inp=Config.get('dnn_before', 'fc1_use_laynorm_inp')
+ options.fc1_use_batchnorm_inp=Config.get('dnn_before', 'fc1_use_batchnorm_inp')
+ options.fc1_use_batchnorm=Config.get('dnn_before', 'fc1_use_batchnorm')
+ options.fc1_use_laynorm=Config.get('dnn_before', 'fc1_use_laynorm')
+ options.fc1_act=Config.get('dnn_before', 'fc1_act')
 
- #[class]
- options.class_lay=Config.get('class', 'class_lay')
- options.class_drop=Config.get('class', 'class_drop')
- options.class_use_laynorm_inp=Config.get('class', 'class_use_laynorm_inp')
- options.class_use_batchnorm_inp=Config.get('class', 'class_use_batchnorm_inp')
- options.class_use_batchnorm=Config.get('class', 'class_use_batchnorm')
- options.class_use_laynorm=Config.get('class', 'class_use_laynorm')
- options.class_act=Config.get('class', 'class_act')
+ #[dnn_after]
+ options.fc2_lay=Config.get('dnn_after', 'fc2_lay')
+ options.fc2_drop=Config.get('dnn_after', 'fc2_drop')
+ options.fc2_use_laynorm_inp=Config.get('dnn_after', 'fc2_use_laynorm_inp')
+ options.fc2_use_batchnorm_inp=Config.get('dnn_after', 'fc2_use_batchnorm_inp')
+ options.fc2_use_batchnorm=Config.get('dnn_after', 'fc2_use_batchnorm')
+ options.fc2_use_laynorm=Config.get('dnn_after', 'fc2_use_laynorm')
+ options.fc2_act=Config.get('dnn_after', 'fc2_act')
 
 
  #[optimization]
  options.lr=Config.get('optimization', 'lr')
  options.batch_size=Config.get('optimization', 'batch_size')
  options.N_epochs=Config.get('optimization', 'N_epochs')
- options.N_batches=Config.get('optimization', 'N_batches')
- options.N_eval_epoch=Config.get('optimization', 'N_eval_epoch')
  options.seed=Config.get('optimization', 'seed')
  options.cuda=Config.get('optimization', 'cuda')
  options.patience=Config.get('optimization', 'patience')
@@ -121,70 +138,3 @@ def create_batches_rnd(batch_size,data_folder,wav_lst,N_snt,wlen,lab_dict,fact_a
  lab=torch.from_numpy(lab_batch).float().cuda().contiguous()
   
  return inp,lab  
-
-
-
-def read_conf_inp(cfg_file):
- 
- parser=OptionParser()
- (options,args)=parser.parse_args()
- 
- Config = ConfigParser.ConfigParser()
- Config.read(cfg_file)
-
- #[data]
- options.train_src_dir=Config.get('data', 'train_src_dir')
- options.train_tgt_dir=Config.get('data', 'train_tgt_dir')
- options.dev_src_dir=Config.get('data', 'dev_src_dir')
- options.dev_tgt_dir=Config.get('data', 'dev_tgt_dir')
- options.output_folder=Config.get('data', 'output_folder')
- options.save_dir=Config.get('data', 'save_dir')
- options.restore_file=Config.get('data', 'restore_file')
-
- #[windowing]
- options.fs=Config.get('windowing', 'fs')
- options.cw_len=Config.get('windowing', 'cw_len')
- options.cw_shift=Config.get('windowing', 'cw_shift')
-
- #[cnn]
- options.cnn_N_filt=Config.get('cnn', 'cnn_N_filt')
- options.cnn_len_filt=Config.get('cnn', 'cnn_len_filt')
- options.cnn_max_pool_len=Config.get('cnn', 'cnn_max_pool_len')
- options.cnn_use_laynorm_inp=Config.get('cnn', 'cnn_use_laynorm_inp')
- options.cnn_use_batchnorm_inp=Config.get('cnn', 'cnn_use_batchnorm_inp')
- options.cnn_use_laynorm=Config.get('cnn', 'cnn_use_laynorm')
- options.cnn_use_batchnorm=Config.get('cnn', 'cnn_use_batchnorm')
- options.cnn_act=Config.get('cnn', 'cnn_act')
- options.cnn_drop=Config.get('cnn', 'cnn_drop')
-
-
- #[dnn]
- options.fc_lay=Config.get('dnn', 'fc_lay')
- options.fc_drop=Config.get('dnn', 'fc_drop')
- options.fc_use_laynorm_inp=Config.get('dnn', 'fc_use_laynorm_inp')
- options.fc_use_batchnorm_inp=Config.get('dnn', 'fc_use_batchnorm_inp')
- options.fc_use_batchnorm=Config.get('dnn', 'fc_use_batchnorm')
- options.fc_use_laynorm=Config.get('dnn', 'fc_use_laynorm')
- options.fc_act=Config.get('dnn', 'fc_act')
-
- #[class]
- options.class_lay=Config.get('class', 'class_lay')
- options.class_drop=Config.get('class', 'class_drop')
- options.class_use_laynorm_inp=Config.get('class', 'class_use_laynorm_inp')
- options.class_use_batchnorm_inp=Config.get('class', 'class_use_batchnorm_inp')
- options.class_use_batchnorm=Config.get('class', 'class_use_batchnorm')
- options.class_use_laynorm=Config.get('class', 'class_use_laynorm')
- options.class_act=Config.get('class', 'class_act')
-
-
- #[optimization]
- options.lr=Config.get('optimization', 'lr')
- options.batch_size=Config.get('optimization', 'batch_size')
- options.N_epochs=Config.get('optimization', 'N_epochs')
- options.N_batches=Config.get('optimization', 'N_batches')
- options.N_eval_epoch=Config.get('optimization', 'N_eval_epoch')
- options.seed=Config.get('optimization', 'seed')
- options.cuda=Config.get('optimization', 'cuda')
- options.patience=Config.get('optimization', 'patience')
-
- return options
