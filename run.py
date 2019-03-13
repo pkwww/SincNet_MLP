@@ -87,8 +87,6 @@ parser.add_option("--model")
 parser.add_option("--cfg")
 (options,args)=parser.parse_args()
 architecture = options.model
-print(architecture)
-print('wtf')
 
 # Reading cfg file
 options=read_conf()
@@ -265,8 +263,8 @@ else:
 		model = EZConv()
 	
 	else:
-		print(architecture)
 		print('Model must be one of: Transformer_features, LSTM_raw, LSTM_features, CNN_raw, CNN_features, SincNet_raw')
+		print('Received: {}'.format(architecture))
 
 
 if cuda:
