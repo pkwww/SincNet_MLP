@@ -158,7 +158,7 @@ fc2_act=list(map(str, options.fc2_act.split(','))) + ['softplus']
 
 
 #[optimization]
-optimizer_to_use=options.lr
+optimizer_to_use=options.optimizer
 weight_decay=float(options.weight_decay)
 lr=float(options.lr)
 batch_size=int(options.batch_size)
