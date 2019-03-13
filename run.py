@@ -285,9 +285,9 @@ else:
 		model = EZConv(MLP_before, MLP_after, CNN_arch)
 	
 	else:
-		print('Model must be one of: Transformer_features, LSTM_raw, LSTM_features, CNN_raw, CNN_features, SincNet_raw')
 		print('Received: {}'.format(architecture))
-
+		raise Exception('Model must be one of: Transformer_features, LSTM_raw, LSTM_features, CNN_raw, CNN_features, SincNet_raw')
+		
 
 if cuda:
 	cost = cost.cuda()
@@ -306,8 +306,7 @@ elif optimizer_to_use == 'RMSProp':
 	optimizer = optim.RMSprop(model.parameters(), lr,alpha=0.95, eps=1e-8, weight_decay=weight_decay) 
 else:
 	print('Optimizer selected: {}'.format(optimizer_to_use))
-	print('Optimizer once be one of: AMSGrad, AdamW, Adam, RMSProp')
-	break
+	raise Exception('Optimizer once be one of: AMSGrad, AdamW, Adam, RMSProp')
 
 # Load last checkpoint if one exists
 state_dict = None
