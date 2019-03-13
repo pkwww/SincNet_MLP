@@ -202,7 +202,7 @@ if architecture == 'Transformer_features':
 	model = FunTimesTransformer(MLP_before, MLP_after,
 		tr_embed_dim, tr_max_positions, tr_pos, tr_num_layers,
 		tr_num_heads, tr_filter_size, tr_hidden_size, tr_dropout, 
-		tr_attention_dropout, tr_relu_dropout)
+		tr_attention_dropout, tr_relu_dropout, cuda)
 
 elif architecture == 'LSTM_raw':
 	MLP_after = {'input_dim': lstm_hidden_size + lstm_hidden_size * lstm_bidirectional,

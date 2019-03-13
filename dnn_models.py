@@ -984,9 +984,11 @@ class TransformerEncoder(nn.Module):
 	def __init__(self, embed_dim=256, max_positions=1024, pos="learned",
 				 num_layers=4, num_heads=8,
 				 filter_size=256, hidden_size=256,
-				 dropout=0.1, attention_dropout=0.1, relu_dropout=0.1):
+				 dropout=0.1, attention_dropout=0.1, relu_dropout=0.1, cuda=True):
 		super(TransformerEncoder, self).__init__()
 		assert pos == "learned" or pos == "timing" or pos == "nopos"
+
+		self.cuda = cuda
 
 		self.dropout = dropout
 		self.attention_dropout = attention_dropout
@@ -1026,8 +1028,10 @@ class TransformerEncoder(nn.Module):
 		input_to_padding = attention_bias_ignore_padding(src_tokens, padding_idx)
 		encoder_self_attention_bias = encoder_attention_bias(input_to_padding)
 		if self.pos != "nopos":
-			#encoder_input += self.embed_positions(src_tokens.type(torch.cuda.LongTensor))
-			encoder_input += self.embed_positions(src_tokens.type(torch.LongTensor))
+			if self.cuda:
+				encoder_input += self.embed_positions(src_tokens.type(torch.cuda.LongTensor))
+			else:
+				encoder_input += self.embed_positions(src_tokens.type(torch.LongTensor))
 
 		x = F.dropout(encoder_input, p=self.dropout, training=self.training)
 		for self_attention, ffn, norm1, norm2 in zip(self.self_attention_blocks,
@@ -1096,7 +1100,7 @@ class FunTimesTransformer(nn.Module):
 
 	def __init__(self, MLP_before_arch, MLP_after_arch, tr_embed_dim, tr_max_positions, tr_pos, tr_num_layers,
 		tr_num_heads, tr_filter_size, tr_hidden_size, tr_dropout, 
-		tr_attention_dropout, tr_relu_dropout):
+		tr_attention_dropout, tr_relu_dropout, cuda):
 
 		super(FunTimesTransformer, self).__init__()
 
@@ -1108,7 +1112,7 @@ class FunTimesTransformer(nn.Module):
 		self.transformer = TransformerEncoder(
 			tr_embed_dim, tr_max_positions, tr_pos, tr_num_layers,
 			tr_num_heads, tr_filter_size, tr_hidden_size, tr_dropout, 
-			tr_attention_dropout, tr_relu_dropout)
+			tr_attention_dropout, tr_relu_dropout, cuda)
 
 		self.result_projection = MLP_for_me(MLP_after_arch)
 		
