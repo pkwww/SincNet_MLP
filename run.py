@@ -263,6 +263,7 @@ else:
 		model = EZConv()
 	
 	else:
+		print(architecutre)
 		print('Model must be one of: Transformer_features, LSTM_raw, LSTM_features, CNN_raw, CNN_features, SincNet_raw')
 
 
