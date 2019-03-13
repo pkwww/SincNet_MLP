@@ -91,6 +91,8 @@ def read_conf():
 
 
  #[optimization]
+ options.optimizer=Config.get('optimization', 'optimizer')
+ options.weight_decay=Config.get('optimization', 'weight_decay')
  options.lr=Config.get('optimization', 'lr')
  options.batch_size=Config.get('optimization', 'batch_size')
  options.N_epochs=Config.get('optimization', 'N_epochs')

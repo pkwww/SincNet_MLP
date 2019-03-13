@@ -158,6 +158,8 @@ fc2_act=list(map(str, options.fc2_act.split(','))) + ['softplus']
 
 
 #[optimization]
+optimizer_to_use=options.lr
+weight_decay=float(options.weight_decay)
 lr=float(options.lr)
 batch_size=int(options.batch_size)
 N_epochs=int(options.N_epochs)
@@ -259,8 +261,28 @@ else:
 		model = FunTimesCNN(MLP_before, MLP_after, CNN_arch, use_sinc_net=architecture=='SincNet_raw')
 
 	elif architecture == 'CNN_features':
-		# TODO
-		model = EZConv()
+		CNN_arch = {'input_dim': fc1_lay[-1],
+					'fs': fs,
+					'cnn_N_filt': cnn_N_filt,
+					'cnn_len_filt': cnn_len_filt,
+					'cnn_max_pool_len':cnn_max_pool_len,
+					'cnn_use_laynorm_inp': cnn_use_laynorm_inp,
+					'cnn_use_batchnorm_inp': cnn_use_batchnorm_inp,
+					'cnn_use_laynorm':cnn_use_laynorm,
+					'cnn_use_batchnorm':cnn_use_batchnorm,
+					'cnn_act': cnn_act,
+					'cnn_drop':cnn_drop,          
+					}
+		MLP_after = {'input_dim': lstm_hidden_size + lstm_hidden_size * lstm_bidirectional,
+			'fc_lay': fc2_lay,
+			'fc_drop': fc2_drop, 
+			'fc_use_batchnorm': fc2_use_batchnorm,
+			'fc_use_laynorm': fc2_use_laynorm,
+			'fc_use_laynorm_inp': fc2_use_laynorm_inp,
+			'fc_use_batchnorm_inp':fc2_use_batchnorm_inp,
+			'fc_act': fc2_act,
+			}
+		model = EZConv(MLP_before, MLP_after, CNN_arch)
 	
 	else:
 		print('Model must be one of: Transformer_features, LSTM_raw, LSTM_features, CNN_raw, CNN_features, SincNet_raw')
@@ -274,13 +296,22 @@ if cuda:
 print('FunTimes: {:d} parameters'.format(sum(p.numel() for p in model.parameters())))
 
 # Instantiate optimizer and learning rate scheduler
-# optimizer = AdamW(model.parameters(), 1e-5, weight_decay=1e-5)
-optimizer = optim.Adam(model.parameters(), lr=lr)
-# optimizer = optim.RMSprop(model.parameters(), lr=lr,alpha=0.95, eps=1e-8) 
+if optimizer_to_use == 'AMSGrad':
+	optimizer = optim.Adam(model.parameters(), lr, weight_decay=weight_decay, amsgrad=True)
+elif optimizer_to_use == 'AdamW':
+	optimizer = AdamW(model.parameters(), lr, weight_decay=weight_decay)
+elif optimizer_to_use == 'Adam':
+	optimizer = optim.Adam(model.parameters(), lr, weight_decay=weight_decay)
+elif optimizer_to_use == 'RMSProp':
+	optimizer = optim.RMSprop(model.parameters(), lr,alpha=0.95, eps=1e-8, weight_decay=weight_decay) 
+else:
+	print('Optimizer selected: {}'.format(optimizer_to_use))
+	print('Optimizer once be one of: AMSGrad, AdamW, Adam, RMSProp')
+	break
 
 # Load last checkpoint if one exists
 state_dict = None
-#state_dict = load_checkpoint(save_dir, restore_file, model, optimizer)
+state_dict = load_checkpoint(save_dir, restore_file, model, optimizer)
 last_epoch = state_dict['last_epoch'] if state_dict is not None else -1
 	
 # Track validation performance for early stopping
