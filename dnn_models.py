@@ -1092,7 +1092,7 @@ class FunTimesLSTM(nn.Module):
 	def forward(self, x):
 		print("forward x shape={}".format(x.shape))
 		if self.raw:
-			x = x.unsqueeze(-1)
+			#x = x.unsqueeze(-1)
 			print("forward after unsqueeze x shape={}".format(x.shape))
 		if self.embed_dim_projection:
 			x = self.embed_dim_projection(x)
