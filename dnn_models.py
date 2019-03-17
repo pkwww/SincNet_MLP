@@ -1056,7 +1056,7 @@ class TransformerEncoder(nn.Module):
 class FunTimesCNN(nn.Module):
 
 	def __init__(self, MLP_before_arch, MLP_after_arch, CNN_arch, use_sinc_net):
-		super(FunTimes, self).__init__()
+		super(FunTimesCNN, self).__init__()
 		if MLP_before_arch != None:
 			self.embed_dim_projection = MLP_for_me(MLP_before_arch)
 		else:
