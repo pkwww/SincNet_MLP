@@ -250,13 +250,13 @@ else:
 			CNN_net = ConvNet(CNN_arch)
 
 		MLP_after = {'input_dim': CNN_net.out_dim,
-					'fc_lay': fc_lay,
-					'fc_drop': fc_drop, 
-					'fc_use_batchnorm': fc_use_batchnorm,
-					'fc_use_laynorm': fc_use_laynorm,
-					'fc_use_laynorm_inp': fc_use_laynorm_inp,
-					'fc_use_batchnorm_inp':fc_use_batchnorm_inp,
-					'fc_act': fc_act,
+					'fc_lay': fc2_lay,
+					'fc_drop': fc2_drop, 
+					'fc_use_batchnorm': fc2_use_batchnorm,
+					'fc_use_laynorm': fc2_use_laynorm,
+					'fc_use_laynorm_inp': fc2_use_laynorm_inp,
+					'fc_use_batchnorm_inp':fc2_use_batchnorm_inp,
+					'fc_act': fc2_act,
 					}
 		model = FunTimesCNN(MLP_before, MLP_after, CNN_arch, use_sinc_net=architecture=='SincNet_raw')
 
