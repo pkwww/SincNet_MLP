@@ -341,6 +341,7 @@ for epoch in range(last_epoch + 1, N_epochs):
 					continue
 
 			signals = sample['signals']
+			print("signals shape={}".format(np.shape(signals)))
 			#signals = sample['signals'].unsqueeze(-1)
 			output = model(signals)
 			loss = cost(output, sample['target'])
