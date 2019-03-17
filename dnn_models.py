@@ -365,6 +365,7 @@ class MLP_for_me(nn.Module):
 		super(MLP_for_me, self).__init__()
 		
 		self.input_dim=int(options['input_dim'])
+		print("fc_lay={}".format(options['fc_lay']))
 		self.fc_lay=options['fc_lay']
 		self.fc_drop=options['fc_drop']
 		self.fc_use_batchnorm=options['fc_use_batchnorm']
