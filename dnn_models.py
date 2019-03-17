@@ -628,7 +628,7 @@ class ConvNet(nn.Module):
 	def forward(self, x):
 		print("fuckfuckfuck")
 		print(x.shape)
-		x = x.transpose(1, 2)
+		#x = x.transpose(1, 2)
 		batch=x.shape[0]
 		seq_len=x.shape[1]
 		 
