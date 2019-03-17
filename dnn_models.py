@@ -1095,7 +1095,7 @@ class FunTimesLSTM(nn.Module):
 			x = self.embed_dim_projection(x)
 		if self.raw:
 			x = x.unsqueeze(-1)
-			x = x.transpose((1,2))
+			x = x.transpose(1,2)
 			print("forward after unsqueeze x shape={}".format(x.shape))
 		x = self.LSTM(x)
 		x = self.result_projection(x)
